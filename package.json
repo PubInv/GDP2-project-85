@@ -1,0 +1,26 @@
+{
+  "name": "global-private-health-records-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Encrypted, dual-unlock FHIR provenance proof of concept",
+  "license": "GPL-3.0-only",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "example": "tsx examples/basic-flow.ts",
+    "example:access-denied": "tsx examples/access-denied.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
