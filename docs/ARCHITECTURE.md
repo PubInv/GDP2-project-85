@@ -2,10 +2,10 @@
 
 ## Scope
 
-This proof of concept tests whether GDT-style append-only provenance can be
-adapted to encrypted FHIR fragments without a demographic patient registry. It
-does not implement fingerprint capture, clinical workflows, distributed
-consensus, or regulatory compliance.
+This proof of concept tests whether append-only provenance can be applied to
+encrypted FHIR fragments without a demographic patient registry. It does not
+implement fingerprint capture, clinical workflows, distributed consensus, or
+regulatory compliance.
 
 ## Trust boundaries
 
@@ -73,14 +73,13 @@ it rejects cycles, missing parents, decryption failures, unknown clinicians,
 invalid signatures, invalid patient MACs, fragment hash mismatches, malformed
 FHIR, and duplicate event identifiers.
 
-## GDT adaptation
+## Global Patient Record Project provenance model
 
-The reference asset-provenance system demonstrates opaque-key access,
-blob-backed provenance records, append/update APIs, attachments, and
-parent/descendant lineage. This POC deliberately does not inherit its
-centralized API deployment or asset authorization assumptions. FHIR fragments
-are analogous to encrypted attachments; signed events form a DAG analogous to
-asset ancestry.
+The project combines opaque-key access, blob-backed provenance records,
+append-only APIs, encrypted FHIR fragments, and parent-event lineage. It avoids
+centralized patient lookup and generic possession-only authorization. Signed
+events form a provenance DAG that can be verified before clinical information
+is displayed.
 
 ## Future milestones
 

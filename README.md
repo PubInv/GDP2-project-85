@@ -3,11 +3,10 @@
 An offline-first proof of concept for patient-sovereign, encrypted health-record
 provenance in humanitarian and disrupted-care settings.
 
-This project adapts the append-only tracking model used by
-`gosqasorg/asset-provenance-tracking` to encrypted HL7 FHIR resources. It does
-not copy that project's Azure deployment or asset-specific data model. Instead,
-it reuses the core ideas of opaque identifiers, immutable provenance entries,
-content integrity checks, and explicit lineage.
+This project applies an append-only tracking model to encrypted HL7 FHIR
+resources. It uses opaque identifiers, immutable provenance entries, content
+integrity checks, and explicit lineage while keeping the implementation focused
+on the Global Patient Record Project.
 
 > [!WARNING]
 > This is research software, not a medical device or production electronic
@@ -53,8 +52,8 @@ search by patient demographics or decrypt record contents.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
 [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for the detailed design and its
-limitations. [docs/REFERENCE_IMPLEMENTATION.md](docs/REFERENCE_IMPLEMENTATION.md)
-records the analysis of the GDT repository used to guide this implementation.
+limitations. [docs/PROVENANCE_DESIGN_NOTES.md](docs/PROVENANCE_DESIGN_NOTES.md)
+records the provenance patterns used by the Global Patient Record Project.
 
 ## Requirements
 
@@ -67,13 +66,18 @@ records the analysis of the GDT repository used to guide this implementation.
 cd C:\p\pubinv\GDP2-project-85
 npm install
 npm test
-npm run example
-npm run example:access-denied
+npm start
 ```
 
-The example enrolls a synthetic patient factor, appends an
-`AllergyIntolerance` and a `Condition`, then unlocks and verifies the assembled
-timeline.
+Open `http://127.0.0.1:3000` in a browser. The **Create sample patient and
+records** action creates a local clinician credential, simulates a patient
+factor, enrolls it, appends an `AllergyIntolerance` and a `Condition`, and
+displays the verified timeline.
+
+The UI is intentionally served only on the loopback interface by default.
+Encrypted objects are persisted under `.data\web`; browser-only patient labels,
+synthetic factor tokens, and the demonstration clinician credential are stored
+in browser local storage.
 
 ## Commands
 
@@ -83,6 +87,8 @@ timeline.
 | `npm run test:coverage` | Run tests with coverage |
 | `npm run typecheck` | Type-check without emitting JavaScript |
 | `npm run build` | Compile TypeScript into `dist` |
+| `npm start` | Run the local web UI at `http://127.0.0.1:3000` |
+| `npm run dev` | Run the local UI with server restart on source changes |
 | `npm run example` | Run the synthetic end-to-end example |
 | `npm run example:access-denied` | Demonstrate that one factor alone cannot unlock a record |
 
@@ -129,31 +135,33 @@ src/
   domain/       FHIR and provenance types
   service/      Enrollment, append, unlock, and verified assembly
   storage/      Storage contract plus memory and local-file implementations
+  web/          Local HTTP API and static-file server
+web/            Browser UI for enrollment, append, and timeline verification
 examples/       Synthetic end-to-end flows
 test/           Unit and integration tests
 docs/           Architecture, threat model, and original project documents
 ```
 
-## Relationship to GDT
+## Tracking model adaptation
 
-The reference GDT project tracks asset provenance using stable opaque keys,
-append/update operations, blob-backed records, attachments, and parent/child
-relationships. This POC keeps the provenance intent but changes the trust model:
+The Global Patient Record Project uses stable opaque keys, append operations,
+blob-backed records, encrypted fragments, and parent relationships. Its trust
+model is designed specifically for patient-controlled health information:
 
-| GDT concept | Health-record adaptation |
+| Tracking concept | Global Patient Record Project adaptation |
 | --- | --- |
-| Device key | Opaque biometric-derived capsule locator |
+| Opaque tracking key | Biometric-derived capsule locator |
 | Provenance record | Encrypted, signed FHIR append event |
 | Record attachments | Encrypted FHIR resource fragments |
 | Parent/descendant tracking | Previous-event links forming a provenance DAG |
 | Blob storage | Provider-neutral encrypted object store |
 | API authorization | Dual patient-factor and clinician-key unlock |
 
-No code or branding from the reference repository is included.
-
 ## Current limitations
 
 - The POC accepts synthetic biometric tokens; it does not process fingerprints.
+- Browser local storage is used for demonstration credentials and simulated
+  factors; it is not an acceptable production key store.
 - The local file store is single-process and is not a distributed storage
   implementation.
 - Device trust, credential revocation, multi-clinic governance, offline merge,

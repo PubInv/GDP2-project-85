@@ -39,13 +39,16 @@ claim clinical, regulatory, biometric, or production readiness.
 - `src/domain`: serializable domain types and validation.
 - `src/storage`: opaque object persistence and compare-and-swap behavior.
 - `src/service`: orchestration, authorization, provenance, and verification.
+- `src/web`: localhost-only HTTP transport; return generic server errors and
+  never log request bodies, credentials, tokens, or decrypted resources.
+- `web`: dependency-free browser UI; patient labels remain browser-local and
+  must never be included in API requests.
 
 Do not weaken a boundary to make a test pass. Explicitly document any new
 metadata visible to the storage provider.
 
-## Reference implementation
+## Project identity
 
-`C:\p\pubinv\asset-provenance-tracking` is a conceptual reference for provenance
-lineage, immutable records, and blob-backed storage. Do not copy its code,
-GOSQAS branding, Azure-specific deployment, or asset-oriented schema into this
-repository.
+Use **Global Patient Record Project** in documentation, examples, placeholders,
+and UI copy. Do not introduce third-party project names, branding, repository
+paths, logos, or unrelated domain terminology.
