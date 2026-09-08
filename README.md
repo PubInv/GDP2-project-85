@@ -54,6 +54,9 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
 [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for the detailed design and its
 limitations. [docs/PROVENANCE_DESIGN_NOTES.md](docs/PROVENANCE_DESIGN_NOTES.md)
 records the provenance patterns used by the Global Patient Record Project.
+The [documentation index](docs/README.md) explains the project's relationship
+to GOSQAS, and [sequence flows](docs/SEQUENCE_FLOWS.md) document the runtime
+interactions.
 
 ## Requirements
 
