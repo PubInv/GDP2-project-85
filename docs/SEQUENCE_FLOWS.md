@@ -278,7 +278,7 @@ sequenceDiagram
     Store-->>ClinicA: Updated head M
     Store-->>ClinicB: Updated head M
 
-    Note over ClinicA,Merge: Clinical conflicts must be surfaced; merge must not silently choose one medical assertion.
+    Note over ClinicA,Merge: Clinical conflicts must be surfaced.<br/>The merge must not silently choose one medical assertion.
 ```
 
 ## 9. Potential GOSQAS interoperability boundary
