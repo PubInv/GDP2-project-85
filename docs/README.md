@@ -394,3 +394,10 @@ architectural influence and potential technical collaboration. Their names,
 marks, and visual identity remain those of their respective owners. The Global
 Patient Record Project uses its own identity and does not represent itself as a
 GOSQAS product.
+
+## Presentation package
+
+The [Global Patient Record Project technical presentation](presentation/technical-presentation.pptx)
+contains six slides covering the current architecture, shared provenance
+concepts, fictional use cases, production-readiness work, and review questions.
+Speaking notes are kept separately from the deck.

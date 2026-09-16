@@ -42,8 +42,24 @@ describe("local web server", () => {
     expect(response.headers.get("content-security-policy")).toContain(
       "default-src 'self'",
     );
-    expect(html).toContain("Global Private Health Records");
+    expect(html).toContain("Global Patient Record Project");
     expect(html).toContain("Create sample patient and records");
+    expect(html).toContain("A private record.");
+    expect(html).toContain('id="timeline-state"');
+    expect(html).toContain("sent to the local server");
+    expect(html).not.toMatch(/<(?:script|link|img|iframe)[^>]+(?:src|href)="https?:/);
+  });
+
+  it("serves the dependency-free stylesheet and timeline script locally", async () => {
+    const [stylesheet, script] = await Promise.all([
+      fetch(`${origin}/styles.css`),
+      fetch(`${origin}/app.js`),
+    ]);
+    expect(stylesheet.status).toBe(200);
+    expect(stylesheet.headers.get("content-type")).toContain("text/css");
+    expect(await stylesheet.text()).toContain(".principles-band");
+    expect(script.status).toBe(200);
+    expect(await script.text()).toContain("Inspect verification details");
   });
 
   it("supports enrollment, append, and verified timeline APIs", async () => {

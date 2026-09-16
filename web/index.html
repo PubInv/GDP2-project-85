@@ -7,173 +7,266 @@
       name="description"
       content="Local proof of concept for encrypted, patient-sovereign FHIR provenance."
     >
-    <title>Global Private Health Records POC</title>
+    <title>Global Patient Record Project | Local research demo</title>
     <link rel="stylesheet" href="/styles.css">
     <script src="/app.js" defer></script>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="site-header">
       <a class="brand" href="#dashboard" data-section-link="dashboard">
         <span class="brand-mark" aria-hidden="true">+</span>
         <span>
-          <strong>Global Private Health Records</strong>
-          <small>Local encrypted provenance POC</small>
+          <strong>Global Patient Record Project</strong>
+          <small>Private records · Verifiable history</small>
         </span>
       </a>
       <nav aria-label="Primary navigation">
-        <button type="button" data-section-link="dashboard">Dashboard</button>
-        <button type="button" data-section-link="enroll">Enroll</button>
-        <button type="button" data-section-link="append">Add entry</button>
-        <button type="button" data-section-link="timeline">Timeline</button>
-        <button type="button" data-section-link="about">How it works</button>
+        <span class="nav-learn">
+          <button type="button" data-section-link="dashboard">Home</button>
+          <button type="button" data-section-link="about">How it works</button>
+        </span>
+        <span class="nav-records">
+          <button type="button" data-section-link="enroll">Create record</button>
+          <button type="button" data-section-link="append">Add entry</button>
+          <button class="nav-view" type="button" data-section-link="timeline">View timeline</button>
+        </span>
       </nav>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
+      <p class="demo-notice">
+        <strong>Synthetic data only.</strong> No real patients or fingerprints.
+        Demo factors and a clinician private key are saved in this browser and
+        sent to the local server for record operations. Not a production key store.
+      </p>
       <div id="message" class="message" role="status" aria-live="polite" hidden></div>
 
       <section id="dashboard" class="page active">
         <div class="hero">
           <div>
-            <p class="eyebrow">Patient-sovereign health provenance</p>
-            <h1>Essential health history unlocked only with patient presence.</h1>
+            <p class="eyebrow">Global Patient Record Project</p>
+            <h1>A private record.<br>A history you can verify.</h1>
             <p class="hero-copy">
-              Create synthetic encrypted FHIR records, append clinician-signed
-              entries, and verify the complete provenance timeline locally.
+              Explore how a patient factor and an authorized clinician key can
+              work together to unlock an encrypted health-record history.
+              Neither works alone.
             </p>
             <div class="button-row">
-              <button class="primary" type="button" id="sample-flow">
-                Create sample patient and records
+              <button class="primary" type="button" data-section-link="timeline">
+                View timeline
               </button>
               <button class="secondary" type="button" data-section-link="enroll">
-                Start manually
+                Create a record
               </button>
             </div>
-          </div>
-          <aside class="warning-card">
-            <strong>Research software</strong>
-            <p>
-              Synthetic data only. This browser simulation is not a fingerprint
-              system, medical device, or production EHR.
+            <p class="detail">
+              Already enrolled? Open your timeline. Starting fresh? Create a
+              synthetic record, or try the guided sample below.
             </p>
+          </div>
+          <aside class="access-preview" aria-label="Two factors, one private history">
+            <p class="eyebrow">Both factors required</p>
+            <div class="factor-pair">
+              <span>Patient factor<small>Synthetic browser token</small></span>
+              <span class="pair-plus" aria-hidden="true">+</span>
+              <span>Clinician key<small>Authorized credential</small></span>
+            </div>
+            <div class="preview-record">
+              <span class="preview-line" aria-hidden="true"></span>
+              <span class="preview-line short" aria-hidden="true"></span>
+              <strong>Encrypted record history</strong>
+              <small>Unlock together. Verify before display.</small>
+            </div>
+            <p class="detail">An illustration of the demo, not a live access status.</p>
           </aside>
         </div>
 
+        <div class="demo-band">
+          <div>
+            <p class="eyebrow">Try it with synthetic data</p>
+            <h2>See the whole journey, without the setup.</h2>
+            <p>
+              The guided sample creates a fictional patient factor and two
+              encrypted entries, then unlocks their verified timeline. It reuses
+              your clinician credential if you already have one.
+            </p>
+            <button class="primary" type="button" id="sample-flow">
+              Create sample patient and records
+            </button>
+            <p class="detail">Runs on this computer. No cloud service is contacted.</p>
+          </div>
+          <div class="status-panel">
+            <h3>Your local session</h3>
+            <dl>
+              <div><dt>Server</dt><dd id="server-status">Checking...</dd></div>
+              <div><dt>Clinician credential</dt><dd id="clinician-status">Not created</dd></div>
+              <div><dt>Patient factors</dt><dd id="factor-count">0</dd></div>
+            </dl>
+            <p class="detail">
+              Keep this browser's demo data. Losing either factor can make
+              existing records inaccessible.
+            </p>
+          </div>
+        </div>
+
+        <div class="section-intro">
+          <p class="eyebrow">Prefer to go step by step?</p>
+          <h2>From a new record to a verified history.</h2>
+          <p>Set up once, add an entry, then unlock the record to inspect it.</p>
+        </div>
         <div class="workflow-grid">
           <article>
             <span>1</span>
-            <h2>Simulate patient presence</h2>
+            <h3>Create a record</h3>
             <p>
-              The browser creates a random secret representing a protected token
-              that a real biometric SDK would return after matching.
+              Create a clinician credential and a simulated patient factor,
+              then enroll the encrypted record. Labels stay in your browser.
             </p>
+            <button class="outline" type="button" data-section-link="enroll">Go to enrollment</button>
           </article>
           <article>
             <span>2</span>
-            <h2>Authorize a clinician</h2>
+            <h3>Add an entry</h3>
             <p>
-              A local RSA credential supplies the second factor and signs every
-              appended provenance event.
+              Choose a supported health-record type and enter a synthetic
+              description. The local service encrypts and appends the entry.
             </p>
+            <button class="outline" type="button" data-section-link="append">Go to Add entry</button>
           </article>
           <article>
             <span>3</span>
-            <h2>Append encrypted FHIR</h2>
+            <h3>View the timeline</h3>
             <p>
-              Clinical resources and provenance are stored as authenticated
-              ciphertext under random identifiers.
+              Use both factors to unlock the record. Read the entries and
+              inspect the checks behind their verified history.
             </p>
-          </article>
-          <article>
-            <span>4</span>
-            <h2>Verify the timeline</h2>
-            <p>
-              Assembly verifies parent links, signatures, authorization MACs,
-              and content hashes before displaying anything.
-            </p>
+            <button class="outline" type="button" data-section-link="timeline">Go to Timeline</button>
           </article>
         </div>
 
-        <div class="status-panel">
-          <h2>Local session</h2>
-          <dl>
-            <div><dt>Server</dt><dd id="server-status">Checking...</dd></div>
-            <div><dt>Clinician credential</dt><dd id="clinician-status">Not created</dd></div>
-            <div><dt>Patient factors</dt><dd id="factor-count">0</dd></div>
-          </dl>
+        <div class="principles-band">
+          <article>
+            <h3>Patient and clinician, together</h3>
+            <p>
+              A patient factor alone cannot open the record. This demo also
+              requires the authorized clinician's private key.
+            </p>
+          </article>
+          <article>
+            <h3>Encrypted at rest</h3>
+            <p>
+              Record fragments and provenance are saved as authenticated
+              ciphertext under random identifiers, not patient names.
+            </p>
+          </article>
+          <article>
+            <h3>Integrity, not clinical truth</h3>
+            <p>
+              Verification checks signatures, authorization, content hashes,
+              and history links. It cannot establish medical accuracy.
+            </p>
+          </article>
+        </div>
+        <div class="learn-more">
+          <h2>Understand the boundaries before you explore.</h2>
+          <p>
+            This is research software, not a medical device or production EHR.
+            A saved demo factor does not prove physical patient presence or
+            informed consent. Real biometric matching is not implemented.
+          </p>
+          <button class="outline" type="button" data-section-link="about">How it works</button>
         </div>
       </section>
 
       <section id="enroll" class="page">
         <div class="page-heading">
-          <p class="eyebrow">Step 1</p>
-          <h1>Enroll a synthetic patient factor</h1>
+          <p class="eyebrow">Create record · Step 1 of 3</p>
+          <h1>Start a private, synthetic record.</h1>
           <p>
-            Patient labels remain only in this browser. The API receives the
-            random synthetic token, never the label.
+            Prepare the two demonstration factors, then enroll the record.
+            You only need to enroll a patient factor once.
           </p>
         </div>
 
         <div class="two-column">
           <form id="clinician-form" class="card">
-            <h2>Clinician credential</h2>
+            <p class="eyebrow">A · Clinician</p>
+            <h2>Prepare the clinician key</h2>
             <p>
               Generate a local demonstration credential. Its private key is kept
               in browser storage for this POC.
             </p>
-            <button class="secondary" type="submit">Create local credential</button>
+            <button class="secondary" type="submit" id="create-clinician">
+              Create local credential
+            </button>
             <p class="detail" id="clinician-id">No credential available.</p>
           </form>
 
           <form id="factor-form" class="card">
-            <h2>Simulated biometric</h2>
+            <p class="eyebrow">B · Patient</p>
+            <h2>Create a simulated factor</h2>
             <label for="factor-label">Local patient label</label>
             <input
               id="factor-label"
               name="factorLabel"
               maxlength="80"
-              placeholder="Example patient A"
+              placeholder="Synthetic patient A"
+              autocomplete="off"
+              aria-describedby="factor-help"
               required
             >
             <button class="secondary" type="submit">
-              Simulate fingerprint capture
+              Create synthetic patient factor
             </button>
-            <p class="detail">
+            <p class="detail" id="factor-help">
               This creates 256 random bits. It does not scan or hash a
-              fingerprint.
+              fingerprint. Use a fictional label, never a real patient's name.
             </p>
           </form>
         </div>
 
         <form id="enroll-form" class="card action-card">
-          <h2>Create encrypted patient record</h2>
+          <p class="eyebrow">C · Enroll</p>
+          <h2>Create the encrypted record</h2>
           <label for="enroll-factor">Patient factor</label>
-          <select id="enroll-factor" required></select>
+          <select id="enroll-factor" aria-describedby="enroll-factor-detail" required></select>
           <p class="factor-detail" id="enroll-factor-detail">
             No patient factor is available.
           </p>
+          <p class="detail">
+            The API receives the random synthetic token, never the label.
+            Create both factors above before enrolling.
+          </p>
           <button class="primary" type="submit">Enroll patient factor</button>
         </form>
+        <div class="next-step">
+          <p>Already enrolled? Keep your existing factors and continue.</p>
+          <button class="outline" type="button" data-section-link="append">Add an entry</button>
+          <button class="outline" type="button" data-section-link="timeline">View timeline</button>
+        </div>
       </section>
 
       <section id="append" class="page">
         <div class="page-heading">
-          <p class="eyebrow">Step 2</p>
-          <h1>Add an essential clinical entry</h1>
+          <p class="eyebrow">Add entry · Step 2 of 3</p>
+          <h1>Add to the record, not over it.</h1>
           <p>
             The selected factor and clinician credential unlock the record only
             for this request. The FHIR resource is encrypted before persistence.
           </p>
         </div>
 
-        <form id="append-form" class="card form-grid">
+        <div class="workspace-grid">
+        <form id="append-form" class="card">
+          <h2>New synthetic entry</h2>
           <label for="append-factor">Patient factor</label>
-          <select id="append-factor" required></select>
+          <select id="append-factor" aria-describedby="append-factor-detail" required></select>
           <p class="factor-detail" id="append-factor-detail">
             No patient factor is available.
           </p>
 
-          <label for="resource-type">FHIR resource type</label>
+          <label for="resource-type">Record type (FHIR)</label>
           <select id="resource-type" required>
             <option value="AllergyIntolerance">Allergy</option>
             <option value="Condition">Condition</option>
@@ -182,11 +275,12 @@
             <option value="Observation">Observation</option>
           </select>
 
-          <label for="clinical-code">Clinical description</label>
+          <label for="clinical-code">Synthetic clinical description</label>
           <input
             id="clinical-code"
             maxlength="160"
             placeholder="Synthetic penicillin allergy"
+            autocomplete="off"
             required
           >
 
@@ -195,60 +289,101 @@
             id="clinical-status"
             maxlength="80"
             placeholder="active"
+            autocomplete="off"
             required
           >
 
-          <button class="primary full-width" type="submit">
+          <button class="primary" type="submit">
             Encrypt and append entry
           </button>
         </form>
+        <aside class="workspace-help">
+          <h2>Before you save</h2>
+          <ol>
+            <li>Select an enrolled synthetic factor. Your saved clinician key is used with it.</li>
+            <li>Use fictional descriptions only. Do not enter real patient information.</li>
+            <li>After saving, choose Unlock and verify on the timeline to read the updated history.</li>
+          </ol>
+          <p>
+            Entries are appended, not edited or deleted. FHIR is a standard
+            format for health data; this demo checks supported types, JSON
+            structure, and size, not full FHIR profile conformance.
+          </p>
+          <button class="outline" type="button" data-section-link="enroll">
+            Need a record? Go to enrollment
+          </button>
+        </aside>
+        </div>
       </section>
 
       <section id="timeline" class="page">
         <div class="page-heading timeline-heading">
           <div>
-            <p class="eyebrow">Step 3</p>
-            <h1>Verified clinical timeline</h1>
+            <p class="eyebrow">View timeline · Step 3 of 3</p>
+            <h1>Verified record timeline</h1>
             <p>
-              No demographic search is available. Select a local patient factor
-              and provide the authorized clinician credential.
+              Choose an enrolled patient factor to unlock the history with
+              your saved, authorized clinician key. No patient-name or
+              demographic search is available.
             </p>
           </div>
           <form id="timeline-form" class="timeline-controls">
+            <h2>Open a private record</h2>
             <label for="timeline-factor">Patient factor</label>
-            <select id="timeline-factor" required></select>
+            <select id="timeline-factor" aria-describedby="timeline-factor-detail" required></select>
             <p class="factor-detail" id="timeline-factor-detail">
               No patient factor is available.
             </p>
             <button class="primary" type="submit">Unlock and verify</button>
+            <p class="detail">Both factors are sent to the local service. Nothing is opened by a public link.</p>
           </form>
         </div>
+        <p class="detail">
+          Verification checks who signed an entry and whether its content and
+          history are intact. It does not establish clinical accuracy.
+        </p>
+        <div class="timeline-toolbar">
+          <p id="timeline-state" class="state-label" role="status">Locked · No decrypted entries displayed</p>
+          <button class="outline" type="button" id="hide-timeline">
+            Hide decrypted timeline
+          </button>
+        </div>
         <div id="timeline-results" class="timeline-list empty-state">
-          No timeline loaded.
+          No timeline loaded. Enroll a synthetic factor, then select it above
+          and choose Unlock and verify.
+        </div>
+        <div class="next-step">
+          <p>Build on this record with another synthetic entry.</p>
+          <button class="outline" type="button" data-section-link="append">Add an entry</button>
         </div>
       </section>
 
       <section id="about" class="page">
         <div class="page-heading">
-          <p class="eyebrow">Architecture</p>
-          <h1>How this differs from ordinary record lookup</h1>
+          <p class="eyebrow">How it works</p>
+          <h1>Private content. Checkable history.</h1>
+          <p>
+            This local research demo separates a record's encrypted content
+            from the factors needed to open it. Here is what it does, and what
+            it does not promise.
+          </p>
         </div>
         <div class="comparison">
           <article class="card">
-            <h2>Global Patient Record Project patterns</h2>
+            <h2>A small, understandable workflow</h2>
             <ul>
               <li>Simple create, append, and history workflow</li>
               <li>Opaque identifiers rather than names</li>
               <li>Immutable event and fragment objects</li>
               <li>Parent links forming an auditable history</li>
-              <li>Offline-oriented local operation</li>
+              <li>Local operation after setup; no cross-device sync yet</li>
             </ul>
           </article>
           <article class="card">
             <h2>Health-specific protections</h2>
             <ul>
-              <li>Two factors are required for every operation</li>
-              <li>Authenticated encryption instead of AES-CBC</li>
+              <li>Both factors required to enroll, append, and read records</li>
+              <li>Authenticated encryption for stored record content</li>
               <li>Clinician signatures and patient authorization MACs</li>
               <li>FHIR resources rather than generic descriptions</li>
               <li>No public history URL or demographic patient search</li>
@@ -256,26 +391,50 @@
           </article>
         </div>
         <div class="card">
-          <h2>Google health and biometric SDKs</h2>
+          <h2>Small by design</h2>
           <p>
-            Google Open Health Stack and the Android FHIR SDK can support FHIR
-            forms, offline storage, workflows, and synchronization. They do not
-            provide patient fingerprint identity or fingerprint-derived key
-            material.
+            This interface uses plain HTML, CSS, and JavaScript, with no GUI
+            framework. The record service depends on a small BlobStore
+            interface, not a cloud provider. Memory and local-file adapters
+            implement the same read, create, and compare-and-swap operations.
+          </p>
+          <h2>Where the demonstration runs</h2>
+          <p>
+            The browser saves synthetic factors and a clinician private key in
+            local storage, which is not a secure production key store. Both are
+            sent to the loopback server for record operations. That service
+            decrypts and verifies records, and returns the timeline to this
+            browser; decryption is not browser-only. The local-file store
+            persists encrypted content on this computer.
+          </p>
+          <h2>What is not implemented</h2>
+          <p>
+            Real biometric matching, recovery, clinician revocation,
+            cross-clinic authorization, distributed storage, and offline
+            synchronization remain future work. The object store can observe
+            opaque access patterns and some capsule metadata. The demo makes
+            no clinical, regulatory, or production-readiness claim.
           </p>
           <p>
-            Android BiometricPrompt can protect a clinician or device key using
-            biometrics enrolled on that Android device. It does not expose raw
-            fingerprints and cannot identify arbitrary patients presenting at a
-            shared clinic tablet. A field deployment therefore needs a separate
-            patient-biometric SDK and supported scanner.
+            A stored synthetic factor proves neither physical patient presence
+            nor informed consent. Verified provenance does not establish
+            clinical truth. Hiding the timeline removes rendered content; it
+            is not a guarantee of secure memory erasure.
           </p>
         </div>
       </section>
     </main>
 
     <footer>
-      Global Private Health Records POC · Local synthetic-data demonstration
+      <div>
+        <strong>Global Patient Record Project</strong>
+        <p>Local research. Synthetic data. No clinical or production-readiness claim.</p>
+      </div>
+      <div class="footer-links">
+        <a href="#dashboard" data-section-link="dashboard">Home</a>
+        <a href="#about" data-section-link="about">How it works</a>
+        <a href="#enroll" data-section-link="enroll">Create record</a>
+      </div>
     </footer>
   </body>
 </html>

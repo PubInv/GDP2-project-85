@@ -1,6 +1,6 @@
-# Global Private Health Records POC
+# Global Patient Record Project
 
-An offline-first proof of concept for patient-sovereign, encrypted health-record
+An offline-oriented, locally runnable proof of concept for patient-sovereign, encrypted health-record
 provenance in humanitarian and disrupted-care settings.
 
 This project applies an append-only tracking model to encrypted HL7 FHIR
@@ -72,15 +72,38 @@ npm test
 npm start
 ```
 
-Open `http://127.0.0.1:3000` in a browser. The **Create sample patient and
-records** action creates a local clinician credential, simulates a patient
+Open `http://127.0.0.1:3000` in a browser. On **Home**, use **View timeline**
+for an existing record or **Create a record** for manual enrollment. Opening
+the timeline does not unlock it.
+
+The separate **Create sample patient and records** action in the blue guided-demo
+section creates a local clinician credential if needed, simulates a patient
 factor, enrolls it, appends an `AllergyIntolerance` and a `Condition`, and
-displays the verified timeline.
+unlocks the verified timeline using both factors.
+
+For a manual walkthrough, choose **Create record**, create a local clinician
+credential, create a synthetic patient factor with a fictional browser-only
+label, and enroll its record. Enrollment takes you to **Add entry**; saving an
+entry takes you to **View timeline**, where **Unlock and verify** reads the
+updated history. Entries show the date and description first; expand **Inspect
+verification details** for provenance checks and identifiers.
+
+The UI retains an existing clinician credential rather than replacing it
+accidentally. Losing browser data can make previously enrolled records
+inaccessible. Changing the selected patient factor, leaving the timeline,
+hiding the browser tab, or choosing **Hide decrypted timeline** removes the
+displayed history and requires another explicit unlock. This clears the view;
+it is not a guarantee of secure memory erasure.
 
 The UI is intentionally served only on the loopback interface by default.
 Encrypted objects are persisted under `.data\web`; browser-only patient labels,
 synthetic factor tokens, and the demonstration clinician credential are stored
-in browser local storage.
+in browser local storage. Both demo secrets are sent to the local server for
+record operations; decryption and verification are not browser-only.
+
+Refresh the page to see HTML, CSS, or JavaScript changes while `npm start` is
+running. The [UX analysis](docs/GLOBAL_PATIENT_RECORD_UX_ANALYSIS.md) documents
+the reference-inspired layout and the patient-specific privacy boundaries.
 
 ## Commands
 
@@ -165,6 +188,9 @@ model is designed specifically for patient-controlled health information:
 - The POC accepts synthetic biometric tokens; it does not process fingerprints.
 - Browser local storage is used for demonstration credentials and simulated
   factors; it is not an acceptable production key store.
+- A stored synthetic factor does not establish physical patient presence or
+  informed consent. Provenance verification establishes integrity, not the
+  clinical truth of an entry.
 - The local file store is single-process and is not a distributed storage
   implementation.
 - Device trust, credential revocation, multi-clinic governance, offline merge,
@@ -173,6 +199,14 @@ model is designed specifically for patient-controlled health information:
 - Append-only storage may conflict with erasure and biometric regulations.
 - FHIR validation is intentionally narrow and is not a replacement for an
   official profile validator.
+
+## Project overview and presentation
+
+The [six-slide technical presentation](docs/presentation/technical-presentation.pptx)
+covers the current architecture, provenance concepts, use cases, and
+production-readiness work. Speaking notes are kept separately from the deck.
+The [UX analysis](docs/GLOBAL_PATIENT_RECORD_UX_ANALYSIS.md) explains the selected
+website improvements and the reference patterns behind them.
 
 ## License
 

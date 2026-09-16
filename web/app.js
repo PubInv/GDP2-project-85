@@ -18,6 +18,13 @@ const factorSelectionDetails = [
   document.querySelector("#append-factor-detail"),
   document.querySelector("#timeline-factor-detail"),
 ];
+let actionPending = false;
+let timelineRevision = 0;
+
+document.querySelector(".skip-link").addEventListener("click", (event) => {
+  event.preventDefault();
+  document.querySelector("#main-content").focus();
+});
 
 factorSelects.forEach((select) => {
   select.addEventListener("change", () => {
@@ -34,7 +41,7 @@ document.querySelectorAll("[data-section-link]").forEach((element) => {
 
 document.querySelector("#clinician-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  await createClinician();
+  await runAction(() => createClinician(), "Creating the local clinician credential...");
 });
 
 document.querySelector("#factor-form").addEventListener("submit", (event) => {
@@ -44,18 +51,22 @@ document.querySelector("#factor-form").addEventListener("submit", (event) => {
     showMessage("Enter a local patient label.", true);
     return;
   }
-  createPatientFactor(label);
-  event.target.reset();
-  showMessage("Synthetic patient factor created in this browser.");
+  try {
+    createPatientFactor(label);
+    event.target.reset();
+    showMessage("Synthetic factor created. Next, enroll its encrypted record below.");
+  } catch (error) {
+    showMessage(error.message, true);
+  }
 });
 
 document.querySelector("#enroll-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  try {
+  await runAction(async () => {
     await enrollSelectedPatient(document.querySelector("#enroll-factor").value);
-  } catch (error) {
-    showMessage(error.message, true);
-  }
+    showSection("append");
+    showMessage("Record enrolled. Next, add a synthetic entry.");
+  }, "Enrolling the encrypted record...");
 });
 
 document.querySelector("#append-form").addEventListener("submit", async (event) => {
@@ -65,23 +76,29 @@ document.querySelector("#append-form").addEventListener("submit", async (event) 
   const description = document.querySelector("#clinical-code").value.trim();
   const status = document.querySelector("#clinical-status").value.trim();
 
-  try {
+  await runAction(async () => {
+    if (!description || !status) {
+      throw new Error("Enter a synthetic description and status; neither can be blank.");
+    }
+    clearTimeline();
     await appendResource(factorId, buildResource(resourceType, description, status));
-    showMessage("FHIR entry encrypted and appended.");
     event.target.reset();
     refreshFactorSelects();
-  } catch (error) {
-    showMessage(error.message, true);
-  }
+    showSection("timeline");
+    showMessage("Entry encrypted and appended. Choose Unlock and verify to read the updated history.");
+  }, "Encrypting and appending the entry...");
 });
 
 document.querySelector("#timeline-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  await loadTimeline(document.querySelector("#timeline-factor").value);
+  await runAction(
+    () => loadTimeline(document.querySelector("#timeline-factor").value),
+    "Unlocking and verifying the history...",
+  );
 });
 
 document.querySelector("#sample-flow").addEventListener("click", async () => {
-  try {
+  await runAction(async () => {
     if (!getClinician()) {
       await createClinician(false);
     }
@@ -104,26 +121,67 @@ document.querySelector("#sample-flow").addEventListener("click", async () => {
     );
     showSection("timeline");
     document.querySelector("#timeline-factor").value = factor.id;
-    await loadTimeline(factor.id);
-    showMessage("Sample encrypted patient timeline created.");
-  } catch (error) {
-    showMessage(error.message, true);
+    if (await loadTimeline(factor.id)) {
+      showMessage("Sample ready: two encrypted entries with verified history. You can now add another entry.");
+    }
+  }, "Creating a sample record and two encrypted entries...");
+});
+
+document.querySelector("#hide-timeline").addEventListener("click", () => {
+  clearTimeline("Timeline hidden. Choose Unlock and verify to display it again.");
+  showMessage("Decrypted timeline removed from this view.");
+});
+
+window.addEventListener("hashchange", () => {
+  showSection(location.hash.slice(1), { updateHistory: false });
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    clearTimeline("Timeline hidden when you left this tab. Unlock and verify again.");
   }
 });
 
-async function createClinician(showSuccess = true) {
+async function runAction(action, pendingMessage) {
+  if (actionPending) {
+    showMessage("An operation is already in progress. Please wait.");
+    return;
+  }
+  actionPending = true;
+  const controls = [...document.querySelectorAll("form input, form select, form button, #sample-flow")];
+  const disabledStates = controls.map((control) => control.disabled);
+  controls.forEach((control) => {
+    control.disabled = true;
+  });
+  document.querySelectorAll("form").forEach((form) => form.setAttribute("aria-busy", "true"));
+  showMessage(pendingMessage);
   try {
-    const credential = await api("/api/clinicians", {});
-    localStorage.setItem(STORAGE_KEYS.clinician, JSON.stringify(credential));
-    refreshLocalStatus();
-    if (showSuccess) {
-      showMessage("Local clinician credential created.");
-    }
-    return credential;
+    await action();
   } catch (error) {
     showMessage(error.message, true);
-    throw error;
+  } finally {
+    actionPending = false;
+    controls.forEach((control, index) => {
+      control.disabled = disabledStates[index];
+    });
+    document.querySelectorAll("form").forEach((form) => form.removeAttribute("aria-busy"));
+    refreshFactorSelects();
+    refreshLocalStatus();
   }
+}
+
+async function createClinician(showSuccess = true) {
+  if (getClinician()) {
+    throw new Error("A clinician credential already exists. It is retained so existing records remain accessible.");
+  }
+  const credential = await api("/api/clinicians", {});
+  localStorage.setItem(STORAGE_KEYS.clinician, JSON.stringify(credential));
+  clearTimeline();
+  refreshLocalStatus();
+  if (showSuccess) {
+    showMessage("Local clinician credential created. Next, create a synthetic patient factor.");
+  }
+  return credential;
 }
 
 function createPatientFactor(label, showSuccess = true) {
@@ -139,7 +197,7 @@ function createPatientFactor(label, showSuccess = true) {
   setActiveFactor(factor.id);
   refreshLocalStatus();
   if (showSuccess) {
-    showMessage("Synthetic fingerprint capture completed.");
+    showMessage("Synthetic patient factor created.");
   }
   return factor;
 }
@@ -158,14 +216,37 @@ async function appendResource(factorId, resource) {
 }
 
 async function loadTimeline(factorId) {
+  clearTimeline("Verifying the selected record. No entries are displayed until verification completes.");
+  const revision = timelineRevision;
   try {
     const result = await api("/api/timeline", getAccess(factorId));
+    // Navigation or factor changes invalidate an in-flight decrypted response.
+    if (revision !== timelineRevision) {
+      return false;
+    }
+    if (document.hidden || !document.querySelector("#timeline").classList.contains("active")) {
+      clearTimeline("Timeline hidden. Return to Timeline and choose Unlock and verify.");
+      return false;
+    }
     renderTimeline(result.entries);
-    showMessage(`Verified ${result.entries.length} timeline entries.`);
+    showMessage(`Verified ${result.entries.length} timeline ${result.entries.length === 1 ? "entry" : "entries"}.`);
+    return true;
   } catch (error) {
-    renderTimeline([]);
-    showMessage(error.message, true);
+    if (revision === timelineRevision) {
+      clearTimeline("Timeline could not be verified. Check both factors and enrollment, then try again.");
+    }
+    throw error;
   }
+}
+
+function clearTimeline(text = "No timeline loaded. Select an enrolled factor and choose Unlock and verify.") {
+  timelineRevision += 1;
+  const results = document.querySelector("#timeline-results");
+  results.className = "timeline-list empty-state";
+  results.textContent = text;
+  const state = document.querySelector("#timeline-state");
+  state.className = "state-label";
+  state.textContent = "Locked · No decrypted entries displayed";
 }
 
 function getAccess(factorId) {
@@ -235,10 +316,13 @@ function buildResource(resourceType, description, status) {
 function renderTimeline(entries) {
   const results = document.querySelector("#timeline-results");
   results.replaceChildren();
+  const state = document.querySelector("#timeline-state");
+  state.className = "state-label verified";
+  state.textContent = `Verified · ${entries.length} ${entries.length === 1 ? "entry" : "entries"} · Integrity checks passed`;
 
   if (!entries.length) {
     results.className = "timeline-list empty-state";
-    results.textContent = "No verified timeline entries.";
+    results.textContent = "Record verified, with no entries yet. Use Add entry to create its first synthetic record.";
     return;
   }
 
@@ -246,6 +330,17 @@ function renderTimeline(entries) {
   entries.forEach(({ event, resource }, index) => {
     const card = document.createElement("article");
     card.className = "timeline-entry";
+
+    const meta = document.createElement("div");
+    meta.className = "entry-meta";
+    const recorded = document.createElement("time");
+    recorded.dateTime = event.recordedAt;
+    recorded.textContent = new Date(event.recordedAt).toLocaleString();
+    const badge = document.createElement("span");
+    badge.className = "verification-badge";
+    badge.textContent = "Integrity verified";
+    meta.append(recorded, badge);
+    card.append(meta);
 
     const heading = document.createElement("h2");
     heading.textContent = `${index + 1}. ${friendlyResourceType(resource.resourceType)}`;
@@ -255,8 +350,10 @@ function renderTimeline(entries) {
     description.textContent = resourceDescription(resource);
     card.append(description);
 
+    const disclosure = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = "Inspect verification details";
     const details = document.createElement("dl");
-    appendDetail(details, "Recorded", new Date(event.recordedAt).toLocaleString());
     appendDetail(details, "FHIR ID", resource.id ?? "Not supplied");
     appendDetail(details, "Event", shortId(event.eventId));
     appendDetail(
@@ -265,7 +362,8 @@ function renderTimeline(entries) {
       event.parents.length ? event.parents.map(shortId).join(", ") : "Enrollment root",
     );
     appendDetail(details, "Verification", "Signature, MAC, hash, and lineage valid");
-    card.append(details);
+    disclosure.append(summary, details);
+    card.append(disclosure);
     results.append(card);
   });
 }
@@ -357,7 +455,7 @@ function refreshFactorSelects(selectedId) {
       return;
     }
 
-    select.disabled = false;
+    select.disabled = actionPending;
     factors.forEach((factor) => {
       const option = document.createElement("option");
       option.value = factor.id;
@@ -375,6 +473,7 @@ function refreshFactorSelects(selectedId) {
 }
 
 function setActiveFactor(factorId) {
+  clearTimeline("Patient selection changed. Unlock and verify the selected record.");
   const factor = getFactors().find((candidate) => candidate.id === factorId);
   if (!factor) {
     localStorage.removeItem(STORAGE_KEYS.activeFactor);
@@ -391,30 +490,55 @@ function refreshLocalStatus() {
   const factors = getFactors();
   clinicianStatus.textContent = clinician ? "Available locally" : "Not created";
   clinicianId.textContent = clinician
-    ? `Credential ${shortId(clinician.credentialId)}`
+    ? `Credential ${shortId(clinician.credentialId)} is retained for existing records. Keep this browser's demo data.`
     : "No credential available.";
+  document.querySelector("#create-clinician").disabled = actionPending || Boolean(clinician);
   factorCount.textContent = String(factors.length);
 }
 
-function showSection(sectionId) {
+function showSection(sectionId, { focus = true, updateHistory = true } = {}) {
+  const sections = [...document.querySelectorAll(".page")];
+  if (!sections.some((section) => section.id === sectionId)) {
+    sectionId = "dashboard";
+    history.replaceState(null, "", "#dashboard");
+  }
+  const previousSection = document.querySelector(".page.active");
+  if (previousSection?.id !== sectionId) {
+    clearTimeline();
+  }
   document.querySelectorAll(".page").forEach((section) => {
     section.classList.toggle("active", section.id === sectionId);
   });
   document.querySelectorAll("nav [data-section-link]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.sectionLink === sectionId);
+    const active = button.dataset.sectionLink === sectionId;
+    button.classList.toggle("active", active);
+    if (active) {
+      button.setAttribute("aria-current", "page");
+    } else {
+      button.removeAttribute("aria-current");
+    }
   });
-  history.replaceState(null, "", `#${sectionId}`);
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (updateHistory && location.hash !== `#${sectionId}`) {
+    history.pushState(null, "", `#${sectionId}`);
+  }
+  if (focus) {
+    const heading = document.querySelector(`#${sectionId} h1`);
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+  }
+  window.scrollTo({ top: 0, behavior: "instant" });
 }
 
 function showMessage(text, isError = false) {
   message.hidden = false;
   message.className = `message${isError ? " error" : ""}`;
+  message.setAttribute("role", isError ? "alert" : "status");
+  message.setAttribute("aria-live", isError ? "assertive" : "polite");
   message.textContent = text;
-  window.clearTimeout(showMessage.timeout);
-  showMessage.timeout = window.setTimeout(() => {
-    message.hidden = true;
-  }, 6000);
+  if (isError) {
+    message.tabIndex = -1;
+    message.focus();
+  }
 }
 
 async function api(path, body) {
@@ -438,7 +562,7 @@ function randomToken() {
 async function initialize() {
   refreshFactorSelects();
   refreshLocalStatus();
-  showSection(location.hash.slice(1) || "dashboard");
+  showSection(location.hash.slice(1) || "dashboard", { focus: false, updateHistory: false });
 
   try {
     const response = await fetch("/api/status");
