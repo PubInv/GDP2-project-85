@@ -6,13 +6,13 @@ import {
   ObjectNotFoundError,
   type BlobStore,
   type StoredObject,
-} from "./blob-store.js";
+} from "../../core/blob-store.js";
 import {
   assertBlobKey,
   decodeStoredObject,
   encodeStoredObject,
   nextVersion,
-} from "./storage-validation.js";
+} from "../../core/storage-validation.js";
 
 export const MAX_DISTRIBUTED_BLOB_BYTES = 1024 * 1024 - 1;
 
@@ -20,6 +20,7 @@ export const MAX_DISTRIBUTED_BLOB_BYTES = 1024 * 1024 - 1;
 export interface DistributedContentStore {
   put(bytes: Uint8Array): Promise<string>;
   get(cid: string): Promise<Uint8Array>;
+  restore?(cid: string): Promise<string>;
 }
 
 export function validateRawCid(value: unknown): string {
@@ -60,13 +61,9 @@ export class DistributedBlobStore implements BlobStore {
   ) {}
 
   public async read<T>(key: string): Promise<StoredObject<T> | undefined> {
-    assertBlobKey(key);
-    const stored = await this.metadata.read(key);
+    const stored = await this.readPointer(key);
     if (stored === undefined) return undefined;
-    if (!Number.isSafeInteger(stored.version) || stored.version < 1) {
-      throw new Error("Invalid storage object version.");
-    }
-    const cid = pointer(stored.value);
+    const { cid } = stored;
     const bytes = await this.content.get(cid);
     if (await rawContentCid(bytes) !== cid) {
       throw new Error("Distributed content integrity check failed.");
@@ -80,6 +77,15 @@ export class DistributedBlobStore implements BlobStore {
     const decoded = decodeStoredObject<T>(text);
     if (decoded.version !== 1) throw new Error("Invalid distributed content format.");
     return { version: stored.version, value: decoded.value };
+  }
+
+  public async restore(key: string): Promise<void> {
+    if (!this.content.restore) throw new Error("Distributed storage has no configured backup restore capability.");
+    const stored = await this.readPointer(key);
+    if (!stored) throw new ObjectNotFoundError("storage object");
+    if (await this.content.restore(stored.cid) !== stored.cid) {
+      throw new Error("Restored content integrity check failed.");
+    }
   }
 
   public async create(key: string, value: unknown): Promise<void> {
@@ -109,5 +115,15 @@ export class DistributedBlobStore implements BlobStore {
     const actual = validateRawCid(await this.content.put(bytes));
     if (actual !== expected) throw new Error("Distributed content integrity check failed.");
     return actual;
+  }
+
+  private async readPointer(key: string): Promise<{ version: number; cid: string } | undefined> {
+    assertBlobKey(key);
+    const stored = await this.metadata.read(key);
+    if (!stored) return undefined;
+    if (!Number.isSafeInteger(stored.version) || stored.version < 1) {
+      throw new Error("Invalid storage object version.");
+    }
+    return { version: stored.version, cid: pointer(stored.value) };
   }
 }

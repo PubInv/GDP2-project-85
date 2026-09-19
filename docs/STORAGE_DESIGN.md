@@ -13,6 +13,7 @@ PatientRecordService -> BlobStore
                          |-- FileBlobStore (local, single-process)
                          |-- AzureBlobStore (conditional block-blob writes)
                          |-- S3BlobStore (conditional object writes)
+                         |-- DynamoDbBlobStore (strong reads, conditional metadata)
                          `-- DistributedBlobStore
                                |-- private Kubo / IPFS Cluster (immutable bytes)
                                `-- configured BlobStore (key-to-CID index, CAS)
@@ -23,6 +24,21 @@ Each deployment chooses one backend. Cross-cloud mirroring and a
 across independent services is not atomic CAS, and rollback would not solve
 concurrent writers. A separate consensus/repair design is required.
 
+The contract lives in `src/storage/core/`, generic selection and secrets in
+`src/storage/config/`, and each implementation plus its construction/config
+factory in `src/storage/adapters/{provider}/`. Provider-specific tests mirror
+these folders. Additional typed factories can be registered at the application
+composition root; selection does not require changing the service or adding
+another provider-specific branch to the generic factory.
+
+The optional AWS path runs Kubo on EC2 with encrypted EBS persistence, uses
+DynamoDB for the atomic index, and synchronously copies immutable encrypted
+content into SSE-KMS S3 before index publication. The backup wrapper consumes
+the same provider-neutral `BlobStore`, so neither it nor the record service
+imports an S3 SDK. KMS protects AWS storage encryption keys and does not replace
+dual unlock. See [AWS foundation](AWS_HYBRID_STORAGE.md) for infrastructure and
+failure-domain limits.
+
 ## Contract and concurrency
 
 `create` preserves version 1 only if the opaque key is absent. `read` returns
@@ -32,6 +48,13 @@ Azure/S3 read the body and provider ETag together, check the logical version,
 then condition the replacement on that ETag. No process-local map is used for
 cloud concurrency. Native precondition failures map to contract errors;
 authorization, service, malformed-object, and transport failures remain errors.
+
+DynamoDB uses strongly consistent reads and a conditional item replacement
+against the expected version in a single-region table. It requires a string
+partition key named `key` and no sort key. Serialized payloads are limited to
+350 KiB, so this adapter is intended primarily for small IPFS metadata pointers,
+not large encrypted content or backups. DAX and eventually consistent
+multi-region global-table writes are not supported CAS authorities.
 
 Factory-created SDK clients do not automatically retry writes. A timed-out
 request may have committed; callers must not interpret a timeout as definite
@@ -72,7 +95,8 @@ not an ordinary IPNS mutable pointer pretending to provide linearizable CAS.
   CIDs. Do not add patient identifiers to blob names, tags, prefixes, or logs.
 - TLS remains enabled; loopback HTTP is opt-in emulator behavior only.
   Service credentials are resolved at runtime through workload identity,
-  Key Vault, or restricted secret mounts. No static credentials are checked in.
+  Key Vault, AWS Secrets Manager, or restricted secret mounts. No static
+  credentials are checked in.
 - Default credential chains are a convenience, not proof of least privilege;
   operators must configure narrowly scoped identities and network controls.
 - Authenticated encryption detects modification but does not independently

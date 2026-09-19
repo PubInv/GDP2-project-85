@@ -228,6 +228,7 @@ The POC supplies:
 - `InMemoryBlobStore` for isolated tests;
 - `FileBlobStore` for the local demonstration;
 - `AzureBlobStore` and `S3BlobStore` for conditional cloud-object writes;
+- `DynamoDbBlobStore` for strongly consistent, conditional metadata writes;
 - experimental `DistributedBlobStore` for private IPFS content with a separate
   compare-and-swap index.
 
@@ -388,6 +389,10 @@ For an architectural review with the GOSQAS team, the most useful questions are:
 - [Biometric simulation](BIOMETRIC_SIMULATION.md)
 - [Global Patient Record UX analysis](GLOBAL_PATIENT_RECORD_UX_ANALYSIS.md)
 - [Provenance design notes](PROVENANCE_DESIGN_NOTES.md)
+- [Storage setup and end-to-end check](STORAGE_QUICKSTART.md)
+- [Provider layout and extensions](../src/storage/README.md)
+- [Private distributed storage](DISTRIBUTED_STORAGE.md)
+- [Optional AWS hybrid foundation](AWS_HYBRID_STORAGE.md)
 - Original concept documents in this directory
 
 ## Terminology note

@@ -39,7 +39,7 @@ import {
   ObjectAlreadyExistsError,
   type BlobStore,
   type StoredObject,
-} from "../storage/blob-store.js";
+} from "../storage/core/blob-store.js";
 import {
   AccessDeniedError,
   IntegrityError,

@@ -5,7 +5,7 @@ import {
   ObjectNotFoundError,
   type BlobStore,
   type StoredObject,
-} from "./blob-store.js";
+} from "../../core/blob-store.js";
 import {
   assertBlobKey,
   decodeStoredObject,
@@ -14,7 +14,7 @@ import {
   nextVersion,
   readBoundedBody,
   requireEtag,
-} from "./storage-validation.js";
+} from "../../core/storage-validation.js";
 
 function azureCode(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null) return undefined;

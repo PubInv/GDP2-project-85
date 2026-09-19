@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { IpfsClusterClient } from "../src/index.js";
-import type { IpfsClusterClientOptions } from "../src/storage/ipfs-cluster-client.js";
-import { MAX_DISTRIBUTED_BLOB_BYTES, rawContentCid, validateRawCid } from "../src/storage/distributed-blob-store.js";
+import { IpfsClusterClient, type IpfsClusterClientOptions } from "../../../src/index.js";
+import { MAX_DISTRIBUTED_BLOB_BYTES, rawContentCid, validateRawCid } from "../../../src/storage/adapters/ipfs/distributed-blob-store.js";
 
 const bytes = Uint8Array.from([1, 2, 3]);
 const base = { kuboUrl: "https://kubo.invalid", clusterUrl: "https://cluster.invalid" };

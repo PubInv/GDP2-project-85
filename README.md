@@ -111,6 +111,10 @@ For Azure, AWS S3, private IPFS, account-free integration tests, and secret-free
 configuration, see the short [storage quickstart](docs/STORAGE_QUICKSTART.md).
 The [draft storage design](docs/STORAGE_DESIGN.md) describes concurrency,
 metadata exposure, and remaining distributed-coordination limits.
+Provider implementations are isolated in
+[`src/storage/adapters/`](src/storage/README.md). An optional
+[AWS hybrid foundation](docs/AWS_HYBRID_STORAGE.md) combines EC2/Kubo/EBS,
+DynamoDB metadata, and SSE-KMS encrypted S3 backups.
 
 | Command | Purpose |
 | --- | --- |
@@ -126,6 +130,7 @@ metadata exposure, and remaining distributed-coordination limits.
 | `npm run test:integration:azure` | Run real-SDK tests against temporary loopback Azurite |
 | `npm run test:integration:ipfs` | Run the private IPFS Docker fixture (Docker engine required) |
 | `npm run test:integration` | Explicit opt-in external-provider contract and encrypted-flow tests |
+| `npm run storage:restore -- OBJECT_KEY` | Explicitly restore verified encrypted IPFS content from its configured backup |
 
 ## Minimal usage
 

@@ -3,10 +3,24 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import {
-  flag, loadRuntimeSecret, positiveInteger, required, storageBackend, storageEndpoint,
-} from "../src/storage/configuration.js";
+  flag, positiveInteger, required, providerName, storageEndpoint,
+} from "../../../src/storage/config/settings.js";
+import { loadRuntimeSecret } from "../../../src/storage/config/secrets.js";
 
 const vault = vi.hoisted(() => ({ getSecret: vi.fn() }));
+const aws = vi.hoisted(() => ({ send: vi.fn(), destroy: vi.fn() }));
+vi.mock("@aws-sdk/client-secrets-manager", () => ({
+  SecretsManagerClient: class {
+    send = aws.send;
+    destroy = aws.destroy;
+  },
+  GetSecretValueCommand: class {
+    constructor(public input: { SecretId: string }) {}
+  },
+}));
+vi.mock("@azure/identity", () => ({
+  DefaultAzureCredential: class {},
+}));
 vi.mock("@azure/keyvault-secrets", () => ({
   SecretClient: class {
     getSecret = vault.getSecret;
@@ -19,14 +33,15 @@ afterAll(async () => {
 });
 
 describe("storage configuration", () => {
-  it("defaults to file and rejects unknown or blank backends", () => {
-    expect(storageBackend({})).toBe("file");
-    for (const backend of ["", "typo", "S3"]) {
-      expect(() => storageBackend({ STORAGE_BACKEND: backend })).toThrow();
+  it("defaults to file and validates provider names independently of registration", () => {
+    expect(providerName({})).toBe("file");
+    for (const backend of ["", "../provider", "S3", "__proto__", "x".repeat(65)]) {
+      expect(() => providerName({ STORAGE_BACKEND: backend })).toThrow();
     }
     for (const backend of ["file", "memory", "s3", "azure", "ipfs"]) {
-      expect(storageBackend({ STORAGE_BACKEND: backend })).toBe(backend);
+      expect(providerName({ STORAGE_BACKEND: backend })).toBe(backend);
     }
+    expect(providerName({ STORAGE_BACKEND: "custom-provider" })).toBe("custom-provider");
   });
 
   it("validates required values, booleans, and integer limits", () => {
@@ -68,6 +83,26 @@ describe("storage configuration", () => {
 });
 
 describe("runtime secret sources", () => {
+  it("retrieves AWS secret strings with runtime identity and releases the client", async () => {
+    const env = { IPFS_AUTH_AWS_SECRET_ID: "synthetic-header", AWS_REGION: "us-east-1" };
+    aws.send.mockResolvedValueOnce({ SecretString: "Bearer synthetic-from-aws" });
+    expect(await loadRuntimeSecret(env, "IPFS_AUTH")).toBe("Bearer synthetic-from-aws");
+    expect(aws.send).toHaveBeenCalledWith(
+      expect.objectContaining({ input: { SecretId: "synthetic-header" } }),
+      expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
+    );
+    expect(aws.destroy).toHaveBeenCalled();
+    aws.send.mockResolvedValueOnce({ SecretBinary: new Uint8Array([1, 2]) });
+    await expect(loadRuntimeSecret(env, "IPFS_AUTH")).rejects.toThrow("nonempty");
+    aws.send.mockRejectedValueOnce(new Error("synthetic AWS access denied"));
+    await expect(loadRuntimeSecret(env, "IPFS_AUTH")).rejects.toThrow("access denied");
+    await expect(loadRuntimeSecret({
+      ...env, IPFS_AUTH_FILE: "some-file",
+    }, "IPFS_AUTH")).rejects.toThrow("Choose one");
+    await expect(loadRuntimeSecret({ IPFS_AUTH_AWS_SECRET_ID: "synthetic" }, "IPFS_AUTH"))
+      .rejects.toThrow("AWS_REGION");
+  });
+
   it("retrieves a named Key Vault secret at runtime and propagates access failures", async () => {
     const env = {
       IPFS_AUTH_KEYVAULT_SECRET: "synthetic-token",

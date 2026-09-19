@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 umask 077
-export IPFS_FORCE_PNET=1
+export LIBP2P_FORCE_PNET=1
 ipfs init
 cp /run/fixture-secrets/swarm.key "$IPFS_PATH/swarm.key"
 chmod 400 "$IPFS_PATH/swarm.key"

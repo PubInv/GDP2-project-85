@@ -26,7 +26,7 @@ describe("private IPFS Docker fixture configuration (no Docker required)", () =>
   });
 
   it("forces a private swarm and explicitly bootstraps Raft followers", () => {
-    expect(containerArguments({ ...options, kind: "kubo" })).toContain("IPFS_FORCE_PNET=1");
+    expect(containerArguments({ ...options, kind: "kubo" })).toContain("LIBP2P_FORCE_PNET=1");
     const bootstrap = "/dns4/cluster1/tcp/9096/p2p/public-peer-id";
     const args = containerArguments({ ...options, alias: "cluster2", kind: "cluster", bootstrap });
     expect(args.slice(-2)).toEqual(["--bootstrap", bootstrap]);
@@ -60,7 +60,7 @@ describe("private IPFS Docker fixture configuration (no Docker required)", () =>
   it("disables public discovery before starting the private Kubo daemon", async () => {
     const script = await readFile(new URL("./kubo.sh", import.meta.url), "utf8");
     for (const setting of [
-      "export IPFS_FORCE_PNET=1", "ipfs bootstrap rm --all",
+      "export LIBP2P_FORCE_PNET=1", "ipfs bootstrap rm --all",
       "ipfs config Routing.Type none", "ipfs config --json Provide.Enabled false",
       "ipfs config --json AutoConf.Enabled false", "ipfs config --json AutoTLS.Enabled false",
       "ipfs config --json Discovery.MDNS.Enabled false",

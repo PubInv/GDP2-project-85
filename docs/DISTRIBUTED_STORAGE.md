@@ -35,7 +35,7 @@ Its options are `kuboUrl`, `clusterUrl`, optional `kuboAuthorization` and
 `minReplicas`/`maxReplicas` (both default 2), `timeoutMs` (30000),
 `pollIntervalMs` (250), and `maxBlobBytes` (1048575). `fetch` is an optional
 injected transport for tests. Secret resolution belongs outside the client:
-load headers through the application's secret-file/Key Vault configuration,
+load headers through the application's secret-file, Key Vault, or Secrets Manager configuration,
 not source, command arguments, URLs, logs, or examples.
 
 Endpoint URLs are origins only, HTTPS by default, without credentials, paths,
@@ -74,6 +74,29 @@ those secrets. Cluster's peer secret is not the Kubo swarm key. Cluster is
 neither storage confidentiality nor application CAS; encryption remains
 mandatory. Private peers see ciphertext, CIDs, sizes, pin membership and
 timing; the index sees random object keys, CIDs and versions.
+
+## Optional durable backup
+
+Set `IPFS_BACKUP_BACKEND=s3` (and `S3_KMS_KEY_ID` outside emulator mode) to
+wrap private content storage in `BackedUpContentStore`. The wrapper depends on
+`BlobStore`, not an AWS SDK, so another registered durable object-store provider
+can replace S3. Each upload must finish primary replication **and** immutable
+backup creation before the index pointer can be published. Failures propagate;
+there is no best-effort success or background-only backup promise.
+
+Backups contain the application's already-encrypted bytes and a verifiable
+CID, wrapped in JSON/base64. For AWS, S3 SSE-KMS adds a second encryption layer.
+KMS never receives the patient token, clinician private key, or reconstructed
+record data key. Backup deduplication verifies the existing immutable bytes.
+
+Reads do not silently fall back. An operator may call `DistributedBlobStore.restore`
+with an opaque object key (or run `npm run storage:restore -- OBJECT_KEY`).
+It verifies backup bytes against the CID and republishes/pins them without
+changing metadata. Concurrent index changes may require another recovery pass.
+Recover the separate metadata index first if it is lost; this operation does
+not enumerate backups, roll back state, recover identities, or repair missing
+clinical factors. Restoring an old provider snapshot without a freshness anchor
+remains a separate rollback risk.
 
 ## Upstream references
 

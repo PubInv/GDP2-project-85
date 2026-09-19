@@ -73,6 +73,21 @@ async function volume(name: string): Promise<void> {
   await docker(["volume", "create", name]);
 }
 
+async function waitForMembers(cluster: string, expected: number): Promise<void> {
+  stage = `waiting for ${expected} healthy Cluster members`;
+  let previous = "";
+  await waitUntil(async () => {
+    const text = await (await request(`${cluster}/peers`)).text();
+    const peers = text.trim().split("\n").map((line) =>
+      JSON.parse(line) as { id?: string; error?: string; ipfs?: { id?: string; error?: string } });
+    const healthy = peers.filter((peer) => peer.id && !peer.error && peer.ipfs?.id && !peer.ipfs.error).length;
+    const summary = `Cluster members observed: ${peers.length}; healthy Kubo connections: ${healthy}.`;
+    if (summary !== previous) console.log(summary);
+    previous = summary;
+    return peers.length === expected && healthy === expected;
+  });
+}
+
 async function node(kind: "kubo" | "cluster", index: number, bootstrap?: string): Promise<string> {
   if (interrupted) throw new Error("Fixture interrupted.");
   const name = `${prefix}-${kind}${index}`;
@@ -230,20 +245,12 @@ async function main(): Promise<void> {
     const cluster = await node("cluster", 1);
     const identity = await (await request(`${cluster}/id`)).json() as { id: string };
     const bootstrap = `/dns4/cluster1/tcp/9096/p2p/${identity.id}`;
+    await waitForMembers(cluster, 1);
     await node("cluster", 2, bootstrap);
+    // An HTTP listener is ready before its Raft membership change has committed.
+    await waitForMembers(cluster, 2);
     await node("cluster", 3, bootstrap);
-    stage = "waiting for three healthy Cluster members";
-    let membershipSummary = "";
-    await waitUntil(async () => {
-      const text = await (await request(`${cluster}/peers`)).text();
-      const peers = text.trim().split("\n").map((line) =>
-        JSON.parse(line) as { id?: string; error?: string; ipfs?: { id?: string; error?: string } });
-      const healthy = peers.filter((peer) => peer.id && !peer.error && peer.ipfs?.id && !peer.ipfs.error).length;
-      const summary = `Cluster members observed: ${peers.length}; healthy Kubo connections: ${healthy}.`;
-      if (summary !== membershipSummary) console.log(summary);
-      membershipSummary = summary;
-      return peers.length === 3 && healthy === 3;
-    });
+    await waitForMembers(cluster, 3);
     stage = "waiting for three valid Cluster freespace metrics";
     let metricSummary = "";
     await waitUntil(async () => {

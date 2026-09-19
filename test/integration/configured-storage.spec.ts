@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   AccessDeniedError,
+  DistributedBlobStore,
   IntegrityError,
   PatientRecordService,
   RecordNotFoundError,
@@ -14,8 +15,8 @@ import { blobStoreContract } from "../helpers/blob-store-contract.js";
 if (process.env.STORAGE_INTEGRATION !== "true") {
   throw new Error("Integration tests require STORAGE_INTEGRATION=true and a dedicated synthetic-data store.");
 }
-if (!["azure", "s3", "ipfs"].includes(process.env.STORAGE_BACKEND ?? "")) {
-  throw new Error("Integration tests require an explicit azure, s3, or ipfs backend, never a fallback.");
+if (!["azure", "s3", "ipfs", "dynamodb"].includes(process.env.STORAGE_BACKEND ?? "")) {
+  throw new Error("Integration tests require an explicit external backend, never a fallback.");
 }
 
 // Do not print SDK errors: their request metadata can contain authorization data.
@@ -54,6 +55,18 @@ blobStoreContract("configured external provider", async () => ({
 }));
 
 describe("configured provider encrypted workflow", () => {
+  if (process.env.STORAGE_BACKEND === "ipfs" && process.env.IPFS_BACKUP_BACKEND) {
+    it("verifies encrypted backup restore without changing the metadata version", async () => {
+      const store = await safe(() => createConfiguredBlobStore());
+      if (!(store instanceof DistributedBlobStore)) throw new Error("Expected distributed backend.");
+      const key = randomBytes(24).toString("hex");
+      await safe(() => store.create(key, { ciphertext: randomBytes(32).toString("base64") }));
+      const before = await safe(() => store.read(key));
+      await safe(() => store.restore(key));
+      expect(await safe(() => store.read(key))).toEqual(before);
+    });
+  }
+
   it("enrolls, appends, reconnects and refuses wrong factors", async () => {
     const store = await connect();
     const records = new PatientRecordService(store);
@@ -65,6 +78,7 @@ describe("configured provider encrypted workflow", () => {
       ...access,
       resource: { resourceType: "Condition", id: "synthetic-integration", code: { text: "SYNTHETIC-ONLY-MARKER" } },
     });
+
     const second = await records.append({
       ...access,
       resource: { resourceType: "Observation", id: "synthetic-followup", status: "final", code: { text: "SYNTHETIC-ONLY-MARKER" } },

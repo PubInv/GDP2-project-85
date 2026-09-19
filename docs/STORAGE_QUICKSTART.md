@@ -5,6 +5,10 @@ Choose one backend; the adapters do not automatically copy data between clouds.
 Existing `.data/web` records are not migrated when the backend changes.
 Give IPFS's key-to-CID index its own container/bucket (using the same Azure/S3
 settings), not a namespace already populated by a direct-storage adapter.
+Provider implementations and setup are segregated under
+`src/storage/adapters/`. See the [extension guide](../src/storage/README.md)
+for the folder layout and registering a custom adapter without editing the
+record service or built-in factory.
 
 ## Without any cloud accounts
 
@@ -25,8 +29,10 @@ reconnects, and checks access denial. It logs no factors or resource contents.
 The factors are discarded on exit, so the remaining encrypted test records
 cannot be unlocked later. Use a dedicated disposable store for this example.
 
-With a running Docker engine, `npm run test:integration:ipfs` runs the isolated
-private distributed-storage fixture. See [distributed storage](DISTRIBUTED_STORAGE.md)
+On a native Linux Docker host (including the Ubuntu CI runner),
+`npm run test:integration:ipfs` runs the isolated private distributed-storage
+fixture. Docker Desktop and remote Docker daemons are not supported by this
+fixture. See [distributed storage](DISTRIBUTED_STORAGE.md)
 for architecture, network restrictions, availability, and coordination limits.
 
 ## Configure Azure or AWS later
@@ -45,7 +51,8 @@ node --env-file=.env.local --import tsx src/web/server.ts
 | `file` | `STORAGE_FILE_DIRECTORY` (default `.data/web`) | Local filesystem permissions; single process only |
 | `azure` | `AZURE_STORAGE_ACCOUNT_URL`, `AZURE_STORAGE_CONTAINER` | `DefaultAzureCredential`: local `az login`, workload identity, or managed identity |
 | `s3` | `S3_BUCKET`, `AWS_REGION`; optional `STORAGE_PREFIX`, `S3_KMS_KEY_ID` | AWS default credential chain: local SSO profile, workload role, or web identity |
-| `ipfs` | Private API URLs, index backend, replication and runtime-secret settings in `.env.example` | Authenticated HTTPS APIs; cloud identity for index; secret-file or Key Vault API authorization |
+| `dynamodb` | `DYNAMODB_TABLE`, `AWS_REGION`; optional `STORAGE_PREFIX` | AWS role/SSO credential chain; intended as IPFS's atomic metadata index |
+| `ipfs` | Private API URLs, index backend, replication and runtime-secret settings in `.env.example` | Authenticated HTTPS APIs; cloud identity for index; secret-file, Key Vault, or Secrets Manager API authorization |
 
 Provision the container/bucket and permissions **before** running. The application
 never creates cloud resources, changes IAM/RBAC, makes containers public, or
@@ -100,8 +107,12 @@ setting `IPFS_API_AUTH_KEYVAULT_SECRET`, `IPFS_CLUSTER_AUTH_KEYVAULT_SECRET`, an
 `AZURE_KEY_VAULT_URL`. Grant the workload **get only** on those secrets.
 Alternatively use `IPFS_API_AUTH_FILE`/`IPFS_CLUSTER_AUTH_FILE` pointing to
 read-only, access-restricted secret mounts outside the checkout. AWS Secrets
-Manager or another secret-store integration can supply those mounts. Never
-include both sources for the same secret. Secret values must be complete
+Manager can supply them directly with `IPFS_API_AUTH_AWS_SECRET_ID` and
+`IPFS_CLUSTER_AUTH_AWS_SECRET_ID` plus `AWS_REGION`, using the workload role.
+Grant only `secretsmanager:GetSecretValue` on those secret ARNs and the
+necessary KMS decrypt permission when their secret encryption requires it.
+Another secret-store integration can supply the mounted files. Never
+configure more than one source for the same secret. Secret values must be complete
 single-line authorization headers (for example, a Bearer or Basic value).
 IPFS swarm keys, cluster secrets, and peer private identities belong in the
 node operators' secret management, not application configuration or GitHub.
@@ -123,8 +134,32 @@ short-lived token; the cloud exchanges it for temporary credentials. No
 long-lived cloud credential is stored in GitHub. Do not grant the cloud identity
 to PR/fork workflows, upload environment dumps, or enable SDK request tracing.
 
-After approval, select Azure or S3 in **Actions > Reviewed cloud storage smoke**.
+After approval, select Azure, S3, DynamoDB, or `aws-hybrid` in
+**Actions > Reviewed cloud storage smoke**. Hybrid mode selects private IPFS
+with DynamoDB metadata and synchronous SSE-KMS S3 backups; it additionally
+needs the private API URLs and Secrets Manager header-secret ARNs as variables.
 Private-endpoint-only resources require a hardened runner with network access.
 Set the repository variable `STORAGE_RUNNER_LABEL` to its approved runner label;
 the default is `ubuntu-latest`. Account provisioning, trust, network access,
 and clinical/security review cannot be supplied by this code change.
+
+## AWS hybrid and recovery
+
+See [AWS deployment](AWS_HYBRID_STORAGE.md) and
+`examples/config/aws-hybrid.env.example`. Kubo persists encrypted content on
+EC2-attached encrypted EBS; DynamoDB holds atomic key-to-CID metadata; S3 keeps
+immutable application-encrypted backup bytes, additionally protected by SSE-KMS.
+Backup failure prevents metadata publication. KMS protects AWS at-rest storage
+keys, **not** the patient/clinician dual-unlock factors or reconstructed record key.
+
+Recovery is explicit, not a read fallback that could hide corruption:
+
+```sh
+node --env-file=.env.local --import tsx examples/restore-content.ts OPAQUE_OBJECT_KEY
+```
+
+This verifies the backup CID, republishes it to the private cluster, and waits
+for replication without modifying metadata. Restore lost DynamoDB metadata
+from its separate PITR/backups first; content backups alone cannot recreate the
+index or recover lost patient factors. A single EC2/EBS node is still a single
+failure domain.

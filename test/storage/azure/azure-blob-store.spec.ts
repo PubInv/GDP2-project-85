@@ -11,7 +11,7 @@ import {
   ConcurrentUpdateError,
   ObjectAlreadyExistsError,
   ObjectNotFoundError,
-} from "../src/index.js";
+} from "../../../src/index.js";
 
 const key = "a".repeat(43);
 const ciphertext = { algorithm: "AES-256-GCM", ciphertext: "synthetic-ciphertext", nonce: "opaque" };

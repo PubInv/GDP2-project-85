@@ -22,7 +22,7 @@ Image pulls require internet access; the running fixture does not.
   forward only to each container's API over the private bridge. No
   internet-connected network or host networking is added. These unauthenticated administrative APIs are
   for an isolated development/CI machine, not a shared untrusted host.
-- Kubo requires `IPFS_FORCE_PNET=1`, an independently generated swarm key,
+- Kubo requires `LIBP2P_FORCE_PNET=1`, an independently generated swarm key,
   no public bootstrap peers, no DHT/routing/providing, no delegated routing
   or IPNS publishing, no automatic remote configuration, no mDNS, no AutoTLS,
   and no relay/NAT mapping. Peers connect explicitly by internal DNS plus

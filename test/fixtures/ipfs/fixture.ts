@@ -49,7 +49,7 @@ export function containerArguments(options: {
     "--mount", `type=volume,source=${options.secretsVolume},target=/run/fixture-secrets,readonly`,
     "--mount", `type=bind,source=${options.scriptDirectory},target=/fixture,readonly`,
     ...(kubo
-      ? ["--env", "IPFS_FORCE_PNET=1"]
+      ? ["--env", "LIBP2P_FORCE_PNET=1"]
       : [
         "--env", "CLUSTER_RESTAPI_HTTPLISTENMULTIADDRESS=/ip4/0.0.0.0/tcp/9094",
         "--env", `CLUSTER_IPFSHTTP_NODEMULTIADDRESS=/dns4/${options.alias.replace("cluster", "kubo")}/tcp/5001`,

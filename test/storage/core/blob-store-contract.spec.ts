@@ -2,8 +2,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll } from "vitest";
-import { FileBlobStore, InMemoryBlobStore } from "../src/index.js";
-import { blobStoreContract } from "./helpers/blob-store-contract.js";
+import { FileBlobStore, InMemoryBlobStore } from "../../../src/index.js";
+import { blobStoreContract } from "../../helpers/blob-store-contract.js";
 
 const directories: string[] = [];
 afterAll(async () => {

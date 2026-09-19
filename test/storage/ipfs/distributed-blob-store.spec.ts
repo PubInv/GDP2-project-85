@@ -3,11 +3,11 @@ import {
   MAX_DISTRIBUTED_BLOB_BYTES,
   rawContentCid,
   type DistributedContentStore,
-} from "../src/storage/distributed-blob-store.js";
+} from "../../../src/storage/adapters/ipfs/distributed-blob-store.js";
 import {
   DistributedBlobStore, InMemoryBlobStore,
   ConcurrentUpdateError, ObjectAlreadyExistsError, ObjectNotFoundError,
-} from "../src/index.js";
+} from "../../../src/index.js";
 
 const key = "a".repeat(32);
 class Content implements DistributedContentStore {

@@ -6,7 +6,7 @@ import {
   ObjectAlreadyExistsError,
   ObjectNotFoundError,
   S3BlobStore,
-} from "../src/index.js";
+} from "../../../src/index.js";
 
 const key = "s".repeat(43);
 const ciphertext = { algorithm: "AES-256-GCM", ciphertext: "synthetic-ciphertext", nonce: "opaque" };
