@@ -32,7 +32,8 @@ cannot be unlocked later. Use a dedicated disposable store for this example.
 On a native Linux Docker host (including the Ubuntu CI runner),
 `npm run test:integration:ipfs` runs the isolated private distributed-storage
 fixture. Docker Desktop and remote Docker daemons are not supported by this
-fixture. See [distributed storage](DISTRIBUTED_STORAGE.md)
+fixture. It uses temporary file metadata/backups, including verified content
+restore, never an inherited cloud-backup setting. See [distributed storage](DISTRIBUTED_STORAGE.md)
 for architecture, network restrictions, availability, and coordination limits.
 
 ## Configure Azure or AWS later
@@ -133,6 +134,12 @@ correct OIDC audience. Do not use wildcard repository trust. GitHub issues a
 short-lived token; the cloud exchanges it for temporary credentials. No
 long-lived cloud credential is stored in GitHub. Do not grant the cloud identity
 to PR/fork workflows, upload environment dumps, or enable SDK request tracing.
+
+The workflow deliberately uses `synthetic-integration/`. Its AWS federated role
+needs object permissions and an S3 KMS encryption-context scope for that prefix.
+Do not set `AWS_ROLE_ARN` to the foundation's EC2-only `NodeRoleArn`: that role
+trusts EC2, not GitHub, and its object permissions cover `records/`.
+Use separately reviewed synthetic resources and OIDC permissions.
 
 After approval, select Azure, S3, DynamoDB, or `aws-hybrid` in
 **Actions > Reviewed cloud storage smoke**. Hybrid mode selects private IPFS

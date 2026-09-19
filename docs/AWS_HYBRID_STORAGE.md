@@ -150,6 +150,14 @@ For another compute service, create an independently reviewed workload role
 with equivalent narrowly scoped permissions and the correct service/OIDC
 trust; do not broaden this node trust or use permanent keys.
 
+The repository's optional manual cloud smoke workflow is separate from this
+deployment path. It uses a protected GitHub environment, a separate federated
+role, and `synthetic-integration/`, not this node role's `records/` prefix.
+Use dedicated synthetic resources, and scope that role's object permissions
+and S3 KMS encryption context to the workflow prefix. The EC2-only `NodeRoleArn`
+is not a valid value for the workflow's `AWS_ROLE_ARN`. See the
+[storage quickstart](STORAGE_QUICKSTART.md) before enabling it.
+
 `s3:ListBucket` is scoped to the **single dedicated backup bucket ARN**, not all
 buckets. S3 needs bucket-list authorization to distinguish a nonexistent
 GetObject key (404) from access denied (403) [17]. The adapter must not treat

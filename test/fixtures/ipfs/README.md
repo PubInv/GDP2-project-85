@@ -61,12 +61,18 @@ IPFS_PRIVATE_NETWORK=true
 IPFS_API_URL=http://127.0.0.1:<dynamic Kubo 1 API port>
 IPFS_CLUSTER_API_URL=http://127.0.0.1:<dynamic Cluster 1 API port>
 IPFS_METADATA_BACKEND=file
-STORAGE_FILE_DIRECTORY=<unique OS-temporary local index directory>
+IPFS_BACKUP_BACKEND=file
+STORAGE_FILE_DIRECTORY=<unique OS-temporary metadata and backup directory>
 IPFS_REPLICATION_MIN=2
 IPFS_REPLICATION_MAX=3
 ```
 
-Readiness requires all three cluster members and allocation metrics. After
+The isolated file backend holds index pointers and CID-addressed synthetic
+backups. The suite includes explicit backup restoration with an unchanged
+metadata version. This is not an S3 or AWS integration result.
+
+Readiness requires each Raft member to finish joining before starting the next,
+then all three allocation metrics. After
 the application suite succeeds, the runner adds a separate random opaque
 1024-byte synthetic ciphertext marker to Kubo 1, requests Cluster replication
 with minimum 2 / maximum 3, and waits for recursive pins on **all three**

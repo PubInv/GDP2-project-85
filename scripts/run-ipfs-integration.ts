@@ -163,6 +163,7 @@ async function runSuite(kubo: string, cluster: string): Promise<void> {
         ...environment, STORAGE_INTEGRATION: "true", STORAGE_BACKEND: "ipfs",
         STORAGE_EMULATOR: "true", IPFS_PRIVATE_NETWORK: "true",
         IPFS_API_URL: kubo, IPFS_CLUSTER_API_URL: cluster, IPFS_METADATA_BACKEND: "file",
+        IPFS_BACKUP_BACKEND: "file",
         STORAGE_FILE_DIRECTORY: metadataDirectory, IPFS_REPLICATION_MIN: "2", IPFS_REPLICATION_MAX: "3",
       },
       stdio: "inherit",
