@@ -45,6 +45,13 @@
 
 ## Required production work
 
+The optional cloud/private-IPFS adapters introduce additional metadata and
+coordination boundaries. See [the storage design](STORAGE_DESIGN.md) for
+ciphertext/CID correlation, the mutable index dependency, ambiguous write
+outcomes, private-network requirements, and snapshot rollback limitations.
+Cloud account configuration and an observed replica count do not establish
+durability, least privilege, or production readiness.
+
 Do not advance to real-patient testing without independent cryptographic review,
 a formal data-protection impact assessment, clinical safety analysis,
 jurisdiction-specific biometric review, informed-consent design, incident

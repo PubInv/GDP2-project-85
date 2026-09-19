@@ -8,7 +8,7 @@ import {
   ConcurrentUpdateError,
   FileBlobStore,
   ObjectAlreadyExistsError,
-} from "../src/index.js";
+} from "../../../src/index.js";
 
 const temporaryDirectories: string[] = [];
 

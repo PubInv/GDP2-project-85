@@ -226,12 +226,16 @@ interface BlobStore {
 The POC supplies:
 
 - `InMemoryBlobStore` for isolated tests;
-- `FileBlobStore` for the local demonstration.
+- `FileBlobStore` for the local demonstration;
+- `AzureBlobStore` and `S3BlobStore` for conditional cloud-object writes;
+- `DynamoDbBlobStore` for strongly consistent, conditional metadata writes;
+- experimental `DistributedBlobStore` for private IPFS content with a separate
+  compare-and-swap index.
 
-An Azure Blob Storage adapter could be added without changing the cryptographic
-or clinical service. A future shared storage package is one of the clearest
-areas for collaboration, provided its contract preserves immutable creation and
-optimistic concurrency.
+These adapters do not change the cryptographic or clinical service. See the
+[storage quickstart](STORAGE_QUICKSTART.md) and
+[draft storage design](STORAGE_DESIGN.md) for configuration, synthetic tests,
+and the distributed adapter's remaining coordination dependency.
 
 ## Intentional differences from GOSQAS
 
@@ -385,6 +389,10 @@ For an architectural review with the GOSQAS team, the most useful questions are:
 - [Biometric simulation](BIOMETRIC_SIMULATION.md)
 - [Global Patient Record UX analysis](GLOBAL_PATIENT_RECORD_UX_ANALYSIS.md)
 - [Provenance design notes](PROVENANCE_DESIGN_NOTES.md)
+- [Storage setup and end-to-end check](STORAGE_QUICKSTART.md)
+- [Provider layout and extensions](../src/storage/README.md)
+- [Private distributed storage](DISTRIBUTED_STORAGE.md)
+- [Optional AWS hybrid foundation](AWS_HYBRID_STORAGE.md)
 - Original concept documents in this directory
 
 ## Terminology note

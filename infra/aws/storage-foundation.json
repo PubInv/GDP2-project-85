@@ -1,0 +1,564 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Global Patient Record Project: synthetic-only research storage foundation. No runtime bootstrap or public IPFS. Review before manual deployment.",
+  "Parameters": {
+    "CreateNode": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": ["false", "true"],
+      "Description": "Opt in only after the approved AMI and private network/runtime prerequisites are complete."
+    },
+    "VpcId": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^vpc-[0-9a-f]+$"
+    },
+    "PrivateSubnetId": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^subnet-[0-9a-f]+$"
+    },
+    "AvailabilityZone": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Must exactly match PrivateSubnetId; retained EBS cannot move between AZs."
+    },
+    "ApprovedAmiId": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^ami-[0-9a-f]+$",
+      "Description": "Reviewed x86_64 EBS-root AMI with pinned Kubo/Cluster, host runtime and secret mounting agent already baked; no extra AMI data volumes."
+    },
+    "RootDeviceName": {
+      "Type": "String",
+      "Default": "/dev/xvda",
+      "AllowedValues": ["/dev/xvda", "/dev/sda1"],
+      "Description": "Must match the approved AMI root device mapping."
+    },
+    "InstanceType": {
+      "Type": "String",
+      "Default": "t3.small",
+      "AllowedValues": ["t3.small", "t3.medium", "m6i.large"]
+    },
+    "DataVolumeGiB": {
+      "Type": "Number",
+      "Default": 100,
+      "MinValue": 20,
+      "MaxValue": 16384
+    },
+    "ClientSecurityGroupId": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^sg-[0-9a-f]+$",
+      "Description": "Existing application/operator private-client SG allowed to reach the authenticated HTTPS proxy only."
+    },
+    "EndpointSecurityGroupId": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^sg-[0-9a-f]+$",
+      "Description": "Existing interface VPC endpoint SG; its inbound HTTPS must allow the output NodeSecurityGroupId."
+    },
+    "S3PrefixListId": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^pl-[0-9a-f]+$",
+      "Description": "AWS-managed regional S3 prefix list attached to the subnet gateway endpoint."
+    },
+    "DynamoDbPrefixListId": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^pl-[0-9a-f]+$",
+      "Description": "AWS-managed regional DynamoDB prefix list attached to the subnet gateway endpoint."
+    },
+    "RuntimeSecretArn": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^arn:[a-z0-9-]+:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:[A-Za-z0-9/_+=.@-]+$",
+      "Description": "Optional existing same-account regional secret ARN, not a secret value. Contains private-network/API bootstrap material, NEVER patient factors or clinical plaintext."
+    },
+    "RuntimeSecretKmsKeyArn": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^arn:[a-z0-9-]+:kms:[a-z0-9-]+:[0-9]{12}:key/[a-zA-Z0-9-]+$",
+      "Description": "Existing customer-managed key for RuntimeSecretArn. Supply both ARN parameters or neither; key policy must permit the node role."
+    },
+    "ApiAuthorizationSecretArn": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^arn:[a-z0-9-]+:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:[A-Za-z0-9/_+=.@-]+$",
+      "Description": "Optional existing Kubo API secret: SecretString is the complete single-line Authorization header, not JSON."
+    },
+    "ApiAuthorizationSecretKmsKeyArn": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^arn:[a-z0-9-]+:kms:[a-z0-9-]+:[0-9]{12}:key/[a-zA-Z0-9-]+$",
+      "Description": "Optional customer-managed key for ApiAuthorizationSecretArn. Leave empty for the AWS-managed Secrets Manager key."
+    },
+    "ClusterAuthorizationSecretArn": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^arn:[a-z0-9-]+:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:[A-Za-z0-9/_+=.@-]+$",
+      "Description": "Optional existing Cluster API secret: SecretString is the complete single-line Authorization header, not JSON."
+    },
+    "ClusterAuthorizationSecretKmsKeyArn": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^arn:[a-z0-9-]+:kms:[a-z0-9-]+:[0-9]{12}:key/[a-zA-Z0-9-]+$",
+      "Description": "Optional customer-managed key for ClusterAuthorizationSecretArn. Leave empty for the AWS-managed Secrets Manager key."
+    }
+  },
+  "Rules": {
+    "NodePrerequisites": {
+      "RuleCondition": {"Fn::Equals": [{"Ref": "CreateNode"}, "true"]},
+      "Assertions": [
+        {
+          "Assert": {"Fn::And": [
+            {"Fn::Not": [{"Fn::Equals": [{"Ref": "VpcId"}, ""]}]},
+            {"Fn::Not": [{"Fn::Equals": [{"Ref": "PrivateSubnetId"}, ""]}]},
+            {"Fn::Not": [{"Fn::Equals": [{"Ref": "AvailabilityZone"}, ""]}]},
+            {"Fn::Not": [{"Fn::Equals": [{"Ref": "ApprovedAmiId"}, ""]}]},
+            {"Fn::Not": [{"Fn::Equals": [{"Ref": "ClientSecurityGroupId"}, ""]}]},
+            {"Fn::Not": [{"Fn::Equals": [{"Ref": "EndpointSecurityGroupId"}, ""]}]},
+            {"Fn::Not": [{"Fn::Equals": [{"Ref": "S3PrefixListId"}, ""]}]},
+            {"Fn::Not": [{"Fn::Equals": [{"Ref": "DynamoDbPrefixListId"}, ""]}]}
+          ]},
+          "AssertDescription": "Node creation requires reviewed AMI, matching VPC/subnet/AZ and private client/endpoint/prefix-list networking."
+        }
+      ]
+    },
+    "ApiAuthorizationKeyRequiresSecret": {
+      "Assertions": [{
+        "Assert": {"Fn::Or": [
+          {"Fn::Equals": [{"Ref": "ApiAuthorizationSecretKmsKeyArn"}, ""]},
+          {"Fn::Not": [{"Fn::Equals": [{"Ref": "ApiAuthorizationSecretArn"}, ""]}]}
+        ]},
+        "AssertDescription": "A Kubo authorization secret key ARN requires its secret ARN."
+      }]
+    },
+    "ClusterAuthorizationKeyRequiresSecret": {
+      "Assertions": [{
+        "Assert": {"Fn::Or": [
+          {"Fn::Equals": [{"Ref": "ClusterAuthorizationSecretKmsKeyArn"}, ""]},
+          {"Fn::Not": [{"Fn::Equals": [{"Ref": "ClusterAuthorizationSecretArn"}, ""]}]}
+        ]},
+        "AssertDescription": "A Cluster authorization secret key ARN requires its secret ARN."
+      }]
+    },
+    "SecretKeyPair": {
+      "Assertions": [{
+        "Assert": {"Fn::Or": [
+          {"Fn::And": [
+            {"Fn::Equals": [{"Ref": "RuntimeSecretArn"}, ""]},
+            {"Fn::Equals": [{"Ref": "RuntimeSecretKmsKeyArn"}, ""]}
+          ]},
+          {"Fn::And": [
+            {"Fn::Not": [{"Fn::Equals": [{"Ref": "RuntimeSecretArn"}, ""]}]},
+            {"Fn::Not": [{"Fn::Equals": [{"Ref": "RuntimeSecretKmsKeyArn"}, ""]}]}
+          ]}
+        ]},
+        "AssertDescription": "Supply both external runtime-secret ARN and its KMS key ARN, or neither."
+      }]
+    }
+  },
+  "Conditions": {
+    "NodeEnabled": {"Fn::Equals": [{"Ref": "CreateNode"}, "true"]},
+    "HasRuntimeSecret": {"Fn::Not": [{"Fn::Equals": [{"Ref": "RuntimeSecretArn"}, ""]}]},
+    "HasApiAuthorizationSecret": {"Fn::Not": [{"Fn::Equals": [{"Ref": "ApiAuthorizationSecretArn"}, ""]}]},
+    "HasApiAuthorizationSecretKey": {"Fn::Not": [{"Fn::Equals": [{"Ref": "ApiAuthorizationSecretKmsKeyArn"}, ""]}]},
+    "HasClusterAuthorizationSecret": {"Fn::Not": [{"Fn::Equals": [{"Ref": "ClusterAuthorizationSecretArn"}, ""]}]},
+    "HasClusterAuthorizationSecretKey": {"Fn::Not": [{"Fn::Equals": [{"Ref": "ClusterAuthorizationSecretKmsKeyArn"}, ""]}]}
+  },
+  "Resources": {
+    "BackupKey": {
+      "Type": "AWS::KMS::Key",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "Description": "Global Patient Record Project S3 infrastructure encryption, not application record keys",
+        "EnableKeyRotation": true,
+        "PendingWindowInDays": 30,
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Sid": "AccountDelegatesThroughIAM",
+            "Effect": "Allow",
+            "Principal": {"AWS": {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"}},
+            "Action": "kms:*",
+            "Resource": "*"
+          }]
+        }
+      }
+    },
+    "MetadataKey": {
+      "Type": "AWS::KMS::Key",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "Description": "Global Patient Record Project DynamoDB infrastructure encryption",
+        "EnableKeyRotation": true,
+        "PendingWindowInDays": 30,
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Sid": "AccountDelegatesThroughIAM",
+            "Effect": "Allow",
+            "Principal": {"AWS": {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"}},
+            "Action": "kms:*",
+            "Resource": "*"
+          }]
+        }
+      }
+    },
+    "VolumeKey": {
+      "Type": "AWS::KMS::Key",
+      "Condition": "NodeEnabled",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "Description": "Global Patient Record Project EBS infrastructure encryption",
+        "EnableKeyRotation": true,
+        "PendingWindowInDays": 30,
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Sid": "AccountDelegatesThroughIAM",
+            "Effect": "Allow",
+            "Principal": {"AWS": {"Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"}},
+            "Action": "kms:*",
+            "Resource": "*"
+          }]
+        }
+      }
+    },
+    "MetadataTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "AttributeDefinitions": [{"AttributeName": "key", "AttributeType": "S"}],
+        "KeySchema": [{"AttributeName": "key", "KeyType": "HASH"}],
+        "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": true,
+        "PointInTimeRecoverySpecification": {"PointInTimeRecoveryEnabled": true},
+        "SSESpecification": {
+          "SSEEnabled": true,
+          "SSEType": "KMS",
+          "KMSMasterKeyId": {"Fn::GetAtt": ["MetadataKey", "Arn"]}
+        }
+      }
+    },
+    "BackupBucket": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {"Rules": [{"ObjectOwnership": "BucketOwnerEnforced"}]},
+        "VersioningConfiguration": {"Status": "Enabled"},
+        "BucketEncryption": {"ServerSideEncryptionConfiguration": [{
+          "BucketKeyEnabled": false,
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "aws:kms",
+            "KMSMasterKeyID": {"Fn::GetAtt": ["BackupKey", "Arn"]}
+          }
+        }]},
+        "LifecycleConfiguration": {"Rules": [{
+          "Id": "AbortIncompleteUploadsOnly",
+          "Status": "Enabled",
+          "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": 7}
+        }]}
+      }
+    },
+    "BackupBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "Bucket": {"Ref": "BackupBucket"},
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "DenyNonTLS",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {"Fn::GetAtt": ["BackupBucket", "Arn"]},
+                {"Fn::Sub": "${BackupBucket.Arn}/*"}
+              ],
+              "Condition": {"Bool": {"aws:SecureTransport": "false"}}
+            },
+            {
+              "Sid": "RequireExplicitKmsEncryption",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:PutObject",
+              "Resource": {"Fn::Sub": "${BackupBucket.Arn}/*"},
+              "Condition": {"StringNotEquals": {"s3:x-amz-server-side-encryption": "aws:kms"}}
+            },
+            {
+              "Sid": "RequireBackupKey",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:PutObject",
+              "Resource": {"Fn::Sub": "${BackupBucket.Arn}/*"},
+              "Condition": {"StringNotEquals": {
+                "s3:x-amz-server-side-encryption-aws-kms-key-id": {"Fn::GetAtt": ["BackupKey", "Arn"]}
+              }}
+            }
+          ]
+        }
+      }
+    },
+    "NodeRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "ec2.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+          }]
+        },
+        "Policies": [{
+          "PolicyName": "OpaqueStorageOnly",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "MetadataReadAndConditionalWrite",
+                "Effect": "Allow",
+                "Action": ["dynamodb:GetItem", "dynamodb:PutItem"],
+                "Resource": {"Fn::GetAtt": ["MetadataTable", "Arn"]}
+              },
+              {
+                "Sid": "EncryptedContentBackup",
+                "Effect": "Allow",
+                "Action": ["s3:GetObject", "s3:PutObject"],
+                "Resource": {"Fn::Sub": "${BackupBucket.Arn}/records/*"}
+              },
+              {
+                "Sid": "BackupMissingKeySemantics",
+                "Effect": "Allow",
+                "Action": ["s3:ListBucket"],
+                "Resource": {"Fn::GetAtt": ["BackupBucket", "Arn"]}
+              },
+              {
+                "Sid": "BackupEncryptionViaS3",
+                "Effect": "Allow",
+                "Action": ["kms:Decrypt", "kms:GenerateDataKey"],
+                "Resource": {"Fn::GetAtt": ["BackupKey", "Arn"]},
+                "Condition": {
+                  "StringEquals": {
+                    "kms:ViaService": {"Fn::Sub": "s3.${AWS::Region}.${AWS::URLSuffix}"},
+                    "kms:CallerAccount": {"Ref": "AWS::AccountId"}
+                  },
+                  "StringLike": {
+                    "kms:EncryptionContext:aws:s3:arn": {"Fn::Sub": "${BackupBucket.Arn}/records/*"}
+                  }
+                }
+              },
+              {
+                "Sid": "ReadTableKeyViaDynamoDB",
+                "Effect": "Allow",
+                "Action": ["kms:Decrypt"],
+                "Resource": {"Fn::GetAtt": ["MetadataKey", "Arn"]},
+                "Condition": {
+                  "StringEquals": {
+                    "kms:ViaService": {"Fn::Sub": "dynamodb.${AWS::Region}.${AWS::URLSuffix}"},
+                    "kms:CallerAccount": {"Ref": "AWS::AccountId"},
+                    "kms:EncryptionContext:aws:dynamodb:tableName": {"Ref": "MetadataTable"}
+                  }
+                }
+              },
+              {"Fn::If": ["HasRuntimeSecret", {
+                "Sid": "ReadOneExternalRuntimeSecret",
+                "Effect": "Allow",
+                "Action": ["secretsmanager:GetSecretValue"],
+                "Resource": {"Ref": "RuntimeSecretArn"}
+              }, {"Ref": "AWS::NoValue"}]},
+              {"Fn::If": ["HasRuntimeSecret", {
+                "Sid": "DecryptRuntimeSecretViaSecretsManager",
+                "Effect": "Allow",
+                "Action": ["kms:Decrypt"],
+                "Resource": {"Ref": "RuntimeSecretKmsKeyArn"},
+                "Condition": {"StringEquals": {
+                  "kms:ViaService": {"Fn::Sub": "secretsmanager.${AWS::Region}.${AWS::URLSuffix}"},
+                  "kms:CallerAccount": {"Ref": "AWS::AccountId"},
+                  "kms:EncryptionContext:SecretARN": {"Ref": "RuntimeSecretArn"}
+                }}
+              }, {"Ref": "AWS::NoValue"}]},
+              {"Fn::If": ["HasApiAuthorizationSecret", {
+                "Sid": "ReadKuboAuthorizationSecret",
+                "Effect": "Allow",
+                "Action": ["secretsmanager:GetSecretValue"],
+                "Resource": {"Ref": "ApiAuthorizationSecretArn"}
+              }, {"Ref": "AWS::NoValue"}]},
+              {"Fn::If": ["HasApiAuthorizationSecretKey", {
+                "Sid": "DecryptKuboAuthorizationViaSecretsManager",
+                "Effect": "Allow",
+                "Action": ["kms:Decrypt"],
+                "Resource": {"Ref": "ApiAuthorizationSecretKmsKeyArn"},
+                "Condition": {"StringEquals": {
+                  "kms:ViaService": {"Fn::Sub": "secretsmanager.${AWS::Region}.${AWS::URLSuffix}"},
+                  "kms:CallerAccount": {"Ref": "AWS::AccountId"},
+                  "kms:EncryptionContext:SecretARN": {"Ref": "ApiAuthorizationSecretArn"}
+                }}
+              }, {"Ref": "AWS::NoValue"}]},
+              {"Fn::If": ["HasClusterAuthorizationSecret", {
+                "Sid": "ReadClusterAuthorizationSecret",
+                "Effect": "Allow",
+                "Action": ["secretsmanager:GetSecretValue"],
+                "Resource": {"Ref": "ClusterAuthorizationSecretArn"}
+              }, {"Ref": "AWS::NoValue"}]},
+              {"Fn::If": ["HasClusterAuthorizationSecretKey", {
+                "Sid": "DecryptClusterAuthorizationViaSecretsManager",
+                "Effect": "Allow",
+                "Action": ["kms:Decrypt"],
+                "Resource": {"Ref": "ClusterAuthorizationSecretKmsKeyArn"},
+                "Condition": {"StringEquals": {
+                  "kms:ViaService": {"Fn::Sub": "secretsmanager.${AWS::Region}.${AWS::URLSuffix}"},
+                  "kms:CallerAccount": {"Ref": "AWS::AccountId"},
+                  "kms:EncryptionContext:SecretARN": {"Ref": "ClusterAuthorizationSecretArn"}
+                }}
+              }, {"Ref": "AWS::NoValue"}]}
+            ]
+          }
+        }]
+      }
+    },
+    "NodeProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Condition": "NodeEnabled",
+      "Properties": {"Roles": [{"Ref": "NodeRole"}]}
+    },
+    "NodeSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Condition": "NodeEnabled",
+      "Properties": {
+        "GroupDescription": "Private authenticated HTTPS only; no public gateway, SSH or raw RPC",
+        "VpcId": {"Ref": "VpcId"},
+        "SecurityGroupIngress": [{
+          "IpProtocol": "tcp",
+          "FromPort": 443,
+          "ToPort": 443,
+          "SourceSecurityGroupId": {"Ref": "ClientSecurityGroupId"}
+        }],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "DestinationSecurityGroupId": {"Ref": "EndpointSecurityGroupId"}
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "DestinationPrefixListId": {"Ref": "S3PrefixListId"}
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "DestinationPrefixListId": {"Ref": "DynamoDbPrefixListId"}
+          }
+        ]
+      }
+    },
+    "NodeLaunchTemplate": {
+      "Type": "AWS::EC2::LaunchTemplate",
+      "Condition": "NodeEnabled",
+      "Properties": {
+        "LaunchTemplateData": {
+          "ImageId": {"Ref": "ApprovedAmiId"},
+          "InstanceType": {"Ref": "InstanceType"},
+          "IamInstanceProfile": {"Arn": {"Fn::GetAtt": ["NodeProfile", "Arn"]}},
+          "MetadataOptions": {
+            "HttpEndpoint": "enabled",
+            "HttpTokens": "required",
+            "HttpPutResponseHopLimit": 1,
+            "HttpProtocolIpv6": "disabled",
+            "InstanceMetadataTags": "disabled"
+          },
+          "NetworkInterfaces": [{
+            "DeviceIndex": 0,
+            "AssociatePublicIpAddress": false,
+            "DeleteOnTermination": true,
+            "SubnetId": {"Ref": "PrivateSubnetId"},
+            "Groups": [{"Ref": "NodeSecurityGroup"}]
+          }],
+          "BlockDeviceMappings": [{
+            "DeviceName": {"Ref": "RootDeviceName"},
+            "Ebs": {
+              "Encrypted": true,
+              "KmsKeyId": {"Fn::GetAtt": ["VolumeKey", "Arn"]},
+              "VolumeType": "gp3",
+              "VolumeSize": 32,
+              "DeleteOnTermination": true
+            }
+          }]
+        }
+      }
+    },
+    "Node": {
+      "Type": "AWS::EC2::Instance",
+      "Condition": "NodeEnabled",
+      "Properties": {
+        "AvailabilityZone": {"Ref": "AvailabilityZone"},
+        "LaunchTemplate": {
+          "LaunchTemplateId": {"Ref": "NodeLaunchTemplate"},
+          "Version": {"Fn::GetAtt": ["NodeLaunchTemplate", "LatestVersionNumber"]}
+        },
+        "Tags": [{"Key": "Name", "Value": "global-patient-record-research-node"}]
+      }
+    },
+    "DataVolume": {
+      "Type": "AWS::EC2::Volume",
+      "Condition": "NodeEnabled",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "AvailabilityZone": {"Ref": "AvailabilityZone"},
+        "Encrypted": true,
+        "KmsKeyId": {"Fn::GetAtt": ["VolumeKey", "Arn"]},
+        "Size": {"Ref": "DataVolumeGiB"},
+        "VolumeType": "gp3",
+        "Tags": [{"Key": "Name", "Value": "global-patient-record-private-ipfs"}]
+      }
+    },
+    "DataVolumeAttachment": {
+      "Type": "AWS::EC2::VolumeAttachment",
+      "Condition": "NodeEnabled",
+      "Properties": {
+        "Device": "/dev/sdf",
+        "InstanceId": {"Ref": "Node"},
+        "VolumeId": {"Ref": "DataVolume"}
+      }
+    }
+  },
+  "Outputs": {
+    "StorageBackend": {"Value": "ipfs"},
+    "IpfsMetadataBackend": {"Value": "dynamodb"},
+    "DynamoDbTable": {"Value": {"Ref": "MetadataTable"}},
+    "AwsRegion": {"Value": {"Ref": "AWS::Region"}},
+    "IpfsBackupBackend": {"Value": "s3"},
+    "S3Bucket": {"Value": {"Ref": "BackupBucket"}},
+    "S3KmsKeyId": {"Value": {"Fn::GetAtt": ["BackupKey", "Arn"]}},
+    "StoragePrefix": {"Value": "records/"},
+    "IpfsPrivateNetwork": {"Value": "true"},
+    "NodeRoleArn": {"Value": {"Fn::GetAtt": ["NodeRole", "Arn"]}},
+    "MetadataKeyArn": {"Value": {"Fn::GetAtt": ["MetadataKey", "Arn"]}},
+    "NodeInstanceId": {"Condition": "NodeEnabled", "Value": {"Ref": "Node"}},
+    "NodeSecurityGroupId": {"Condition": "NodeEnabled", "Value": {"Ref": "NodeSecurityGroup"}},
+    "DataVolumeId": {"Condition": "NodeEnabled", "Value": {"Ref": "DataVolume"}},
+    "VolumeKeyArn": {"Condition": "NodeEnabled", "Value": {"Fn::GetAtt": ["VolumeKey", "Arn"]}}
+  }
+}
