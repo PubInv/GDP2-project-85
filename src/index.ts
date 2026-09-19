@@ -34,3 +34,15 @@ export {
 } from "./storage/blob-store.js";
 export { FileBlobStore } from "./storage/file-blob-store.js";
 export { InMemoryBlobStore } from "./storage/in-memory-blob-store.js";
+export { AzureBlobStore } from "./storage/azure-blob-store.js";
+export { S3BlobStore, type S3BlobStoreOptions } from "./storage/s3-blob-store.js";
+export {
+  DistributedBlobStore, type DistributedContentStore,
+} from "./storage/distributed-blob-store.js";
+export {
+  IpfsClusterClient, type IpfsClusterClientOptions,
+} from "./storage/ipfs-cluster-client.js";
+export { createConfiguredBlobStore } from "./storage/configured-blob-store.js";
+export {
+  StorageConfigurationError, type StorageBackend, type StorageEnvironment,
+} from "./storage/configuration.js";

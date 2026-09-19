@@ -83,11 +83,18 @@ is displayed.
 
 ## Future milestones
 
+Optional storage adapters now cover Azure, S3, and experimental private-IPFS
+content with a separately configured CAS index. See
+[storage design](STORAGE_DESIGN.md) and [setup](STORAGE_QUICKSTART.md).
+The private-IPFS adapter is not a decentralized consensus implementation;
+operator independence, index availability, and offline head merging remain
+separate work.
+
 - Real biometric SDK adapter with template protection and liveness evidence
 - Multi-finger enrollment and recovery policy
 - Multiple authorized clinicians with revocation
 - Offline branch creation and deterministic merge
-- Distributed object-store adapter
+- Independently operated distributed storage with resilient index coordination
 - FHIR profile validation and consent resources
 - Metadata-hiding access protocol
 - Independent cryptographic, clinical-safety, legal, and ethics reviews

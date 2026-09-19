@@ -20,3 +20,12 @@ npm run example:access-denied
 
 `access-denied.ts` demonstrates that a valid patient factor paired with an
 unrecognized clinician credential is rejected.
+
+## Configurable storage example
+
+`npm run example:storage` uses the selected `STORAGE_BACKEND` and only synthetic
+data. It enrolls, appends two entries, reconnects, verifies lineage, and checks
+wrong-clinician denial without printing secret factors or record contents.
+See [storage setup](../docs/STORAGE_QUICKSTART.md) for Azure, AWS, private IPFS,
+emulator testing, and runtime identities. No cloud accounts are needed for
+the default file-backed example or the Azure emulator suite.
