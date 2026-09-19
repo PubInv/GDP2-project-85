@@ -75,15 +75,26 @@ async function node(kind: "kubo" | "cluster", index: number, bootstrap?: string)
   if (interrupted) throw new Error("Fixture interrupted.");
   const name = `${prefix}-${kind}${index}`;
   const dataVolume = `${name}-data`;
+  stage = `creating ${kind} ${index} data volume`;
   await volume(dataVolume);
   containers.push(name);
+  stage = `creating ${kind} ${index} container`;
   await docker(containerArguments({
     name, network, alias: `${kind}${index}`, dataVolume, secretsVolume,
     scriptDirectory: resolve("test/fixtures/ipfs"), kind,
     ...(bootstrap ? { bootstrap } : {}),
   }));
+  stage = `starting ${kind} ${index} container`;
   await docker(["start", name]);
-  const endpoint = loopbackEndpoint(await docker(["port", name, kind === "kubo" ? "5001/tcp" : "9094/tcp"]));
+  stage = `resolving ${kind} ${index} loopback API binding`;
+  const binding = await docker(["port", name, kind === "kubo" ? "5001/tcp" : "9094/tcp"]);
+  if (!binding) {
+    const state = await docker(["inspect", "--format", "{{.State.Status}} {{.State.ExitCode}}", name]);
+    if (/^[a-z]+ \d+$/.test(state)) console.error(`Fixture ${kind} ${index} container state: ${state}; no published API binding.`);
+    throw new Error("Fixture API binding unavailable.");
+  }
+  const endpoint = loopbackEndpoint(binding);
+  stage = `waiting for ${kind} ${index} API readiness`;
   await waitUntil(async () => {
     const info = await (await request(`${endpoint}${kind === "kubo" ? "/api/v0/id" : "/id"}`,
       kind === "kubo" ? { method: "POST" } : {})).json() as { ID?: string; id?: string };
