@@ -3,6 +3,17 @@ import { randomBytes } from "node:crypto";
 export const KUBO_IMAGE = "ipfs/kubo:v0.43.1";
 export const CLUSTER_IMAGE = "ipfs/ipfs-cluster:v1.1.6";
 
+export function isolatedIntegrationEnvironment(inherited: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const environment = { ...inherited };
+  for (const setting of [
+    "IPFS_API_AUTH", "IPFS_API_AUTH_FILE", "IPFS_API_AUTH_KEYVAULT_SECRET",
+    "IPFS_CLUSTER_AUTH", "IPFS_CLUSTER_AUTH_FILE", "IPFS_CLUSTER_AUTH_KEYVAULT_SECRET",
+    "IPFS_API_AUTH_AWS_SECRET_ID", "IPFS_CLUSTER_AUTH_AWS_SECRET_ID", "IPFS_BACKUP_BACKEND",
+    "AZURE_KEY_VAULT_URL", "AZURE_LOG_LEVEL",
+  ]) delete environment[setting];
+  return environment;
+}
+
 // Secret values travel only on stdin, never Docker argv, labels, or its saved environment.
 export function secretInput(): string {
   return `${randomBytes(32).toString("hex")}\n${randomBytes(32).toString("hex")}\n`;
@@ -37,7 +48,6 @@ export function containerArguments(options: {
     "--mount", `type=volume,source=${options.dataVolume},target=${kubo ? "/data/ipfs" : "/data/ipfs-cluster"},volume-nocopy`,
     "--mount", `type=volume,source=${options.secretsVolume},target=/run/fixture-secrets,readonly`,
     "--mount", `type=bind,source=${options.scriptDirectory},target=/fixture,readonly`,
-    "--publish", `127.0.0.1::${kubo ? "5001" : "9094"}`,
     ...(kubo
       ? ["--env", "IPFS_FORCE_PNET=1"]
       : [
@@ -51,11 +61,4 @@ export function containerArguments(options: {
     `/fixture/${options.kind}.sh`,
     ...(options.bootstrap ? ["--bootstrap", options.bootstrap] : []),
   ];
-}
-
-export function loopbackEndpoint(portOutput: string): string {
-  const match = /^127\.0\.0\.1:(\d+)\s*$/.exec(portOutput);
-  const port = Number(match?.[1]);
-  if (!match || port < 1 || port > 65_535) throw new Error("Non-loopback Docker API binding.");
-  return `http://127.0.0.1:${port}`;
 }

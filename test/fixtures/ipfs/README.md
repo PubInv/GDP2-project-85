@@ -1,7 +1,9 @@
 # Private IPFS integration fixture
 
 Run `npm run test:integration:ipfs` from the project root with Node.js 22+
-and a running Docker engine capable of Linux containers. No hosted account,
+and a running native Linux Docker engine on the same host (as on GitHub's
+Ubuntu runners). Docker Desktop and remote Docker daemons are not supported:
+the runner must be able to reach its internal bridge directly. No hosted account,
 API token, public pinning service, or additional npm dependency is required.
 Default `npm test` only runs the Docker-free fixture configuration tests.
 
@@ -14,8 +16,11 @@ Image pulls require internet access; the running fixture does not.
 
 - Three Kubo nodes and three Raft Cluster nodes share one unique Docker
   **internal** bridge network. No host swarm, gateway, proxy, metrics, or
-  cluster peer ports are published. API ports use dynamically assigned
-  `127.0.0.1` bindings only. These unauthenticated administrative APIs are
+  cluster peer ports are published. Docker does not install published port
+  mappings for containers attached only to an internal network. Instead,
+  runner-owned TCP relays bind dynamically assigned `127.0.0.1` ports and
+  forward only to each container's API over the private bridge. No
+  internet-connected network or host networking is added. These unauthenticated administrative APIs are
   for an isolated development/CI machine, not a shared untrusted host.
 - Kubo requires `IPFS_FORCE_PNET=1`, an independently generated swarm key,
   no public bootstrap peers, no DHT/routing/providing, no delegated routing
@@ -37,7 +42,7 @@ Image pulls require internet access; the running fixture does not.
   capability is granted.
 - The Docker log driver is disabled. The runner never dumps daemon logs,
   configuration, identities, upstream errors, or secrets.
-- Only this invocation's named containers, attached anonymous volumes,
+- Only this invocation's TCP relays/connections, named containers, attached anonymous volumes,
   named volumes, network, and unique local metadata directory are removed.
   No global prune/kill operation is used. Cleanup runs on normal failure and
   catchable termination signals. Forced machine/process termination can
@@ -76,6 +81,11 @@ or region failure tolerance, or production/clinical readiness. The local
 metadata index remains a single point of failure.
 
 ## Official references
+
+- Docker internal networks permit direct host-to-container communication:
+  `https://docs.docker.com/reference/cli/docker/network/create/#network-internal-mode---internal`
+- Docker's internal-only port-publishing limitation:
+  `https://github.com/moby/moby/issues/36174`
 
 - Kubo Docker and swarm-key documentation:
   `https://docs.ipfs.tech/install/run-ipfs-inside-docker/`

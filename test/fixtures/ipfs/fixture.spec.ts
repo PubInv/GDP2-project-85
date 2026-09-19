@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
-import { CLUSTER_IMAGE, KUBO_IMAGE, containerArguments, loopbackEndpoint, secretInput } from "./fixture.js";
+import { CLUSTER_IMAGE, KUBO_IMAGE, containerArguments, isolatedIntegrationEnvironment, secretInput } from "./fixture.js";
 
 describe("private IPFS Docker fixture configuration (no Docker required)", () => {
   const options = {
@@ -17,10 +17,9 @@ describe("private IPFS Docker fixture configuration (no Docker required)", () =>
       `type=volume,source=unique-data,target=${kind === "kubo" ? "/data/ipfs" : "/data/ipfs-cluster"},volume-nocopy`,
     );
     expect(args).toContain("type=volume,source=unique-secrets,target=/run/fixture-secrets,readonly");
-    expect(args.filter((arg) => arg.startsWith("127.0.0.1::"))).toEqual([
-      `127.0.0.1::${kind === "kubo" ? "5001" : "9094"}`,
-    ]);
+    expect(args).not.toContain("--publish");
     expect(args).not.toContain("--publish-all");
+    expect(args).toContain("unique-private");
     expect(args.join(" ")).not.toContain("CLUSTER_SECRET=");
     expect(args).toContain(kind === "kubo" ? KUBO_IMAGE : CLUSTER_IMAGE);
     expect(args).not.toContain("latest");
@@ -44,11 +43,18 @@ describe("private IPFS Docker fixture configuration (no Docker required)", () =>
     expect(first === secretInput()).toBe(false);
   });
 
-  it("accepts only one explicit loopback mapping", () => {
-    expect(loopbackEndpoint("127.0.0.1:49152\n")).toBe("http://127.0.0.1:49152");
-    for (const value of ["0.0.0.0:5001", "[::]:5001", "127.0.0.1:0", "127.0.0.1:65536", "127.0.0.1:5001\n0.0.0.0:5001"]) {
-      expect(() => loopbackEndpoint(value)).toThrow();
-    }
+  it("does not inherit production auth providers or a cloud backup backend", () => {
+    const excluded = [
+      "IPFS_API_AUTH", "IPFS_API_AUTH_FILE", "IPFS_API_AUTH_KEYVAULT_SECRET",
+      "IPFS_CLUSTER_AUTH", "IPFS_CLUSTER_AUTH_FILE", "IPFS_CLUSTER_AUTH_KEYVAULT_SECRET",
+      "IPFS_API_AUTH_AWS_SECRET_ID", "IPFS_CLUSTER_AUTH_AWS_SECRET_ID", "IPFS_BACKUP_BACKEND",
+      "AZURE_KEY_VAULT_URL", "AZURE_LOG_LEVEL",
+    ];
+    const inherited = Object.fromEntries(excluded.map((key) => [key, "synthetic-test-setting"]));
+    inherited.PATH = "synthetic-path";
+    const environment = isolatedIntegrationEnvironment(inherited);
+    expect(environment).toEqual({ PATH: "synthetic-path" });
+    for (const key of excluded) expect(inherited[key]).toBe("synthetic-test-setting");
   });
 
   it("disables public discovery before starting the private Kubo daemon", async () => {

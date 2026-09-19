@@ -5,8 +5,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import {
-  CLUSTER_IMAGE, KUBO_IMAGE, SECRET_INIT_SCRIPT, containerArguments, loopbackEndpoint, secretInput,
+  CLUSTER_IMAGE, KUBO_IMAGE, SECRET_INIT_SCRIPT, containerArguments, isolatedIntegrationEnvironment, secretInput,
 } from "../test/fixtures/ipfs/fixture.js";
+import { createApiRelay, isPrivateIPv4, type ApiRelay } from "../test/fixtures/ipfs/api-relay.js";
 
 const prefix = `gphr-ipfs-${randomBytes(10).toString("hex")}`;
 const network = `${prefix}-network`;
@@ -14,6 +15,7 @@ const secretsVolume = `${prefix}-secrets`;
 let metadataDirectory: string | undefined;
 const containers: string[] = [];
 const volumes: string[] = [];
+const relays: ApiRelay[] = [];
 let networkCreated = false;
 let interrupted = false;
 let tests: ChildProcess | undefined;
@@ -86,20 +88,26 @@ async function node(kind: "kubo" | "cluster", index: number, bootstrap?: string)
   }));
   stage = `starting ${kind} ${index} container`;
   await docker(["start", name]);
-  stage = `resolving ${kind} ${index} loopback API binding`;
-  const binding = await docker(["port", name, kind === "kubo" ? "5001/tcp" : "9094/tcp"]);
-  if (!binding) {
-    const state = await docker(["inspect", "--format", "{{.State.Status}} {{.State.ExitCode}}", name]);
-    if (/^[a-z]+ \d+$/.test(state)) console.error(`Fixture ${kind} ${index} container state: ${state}; no published API binding.`);
-    throw new Error("Fixture API binding unavailable.");
-  }
-  const endpoint = loopbackEndpoint(binding);
+  stage = `connecting ${kind} ${index} private API through loopback relay`;
+  const address = await docker([
+    "inspect", "--format", `{{(index .NetworkSettings.Networks "${network}").IPAddress}}`, name,
+  ]);
+  if (!isPrivateIPv4(address)) throw new Error("Fixture container lacks a private IPv4 address.");
+  const relay = await createApiRelay(address, kind === "kubo" ? 5001 : 9094);
+  relays.push(relay);
+  const endpoint = relay.endpoint;
   stage = `waiting for ${kind} ${index} API readiness`;
-  await waitUntil(async () => {
-    const info = await (await request(`${endpoint}${kind === "kubo" ? "/api/v0/id" : "/id"}`,
-      kind === "kubo" ? { method: "POST" } : {})).json() as { ID?: string; id?: string };
-    return typeof (kind === "kubo" ? info.ID : info.id) === "string";
-  });
+  try {
+    await waitUntil(async () => {
+      const info = await (await request(`${endpoint}${kind === "kubo" ? "/api/v0/id" : "/id"}`,
+        kind === "kubo" ? { method: "POST" } : {})).json() as { ID?: string; id?: string };
+      return typeof (kind === "kubo" ? info.ID : info.id) === "string";
+    });
+  } catch {
+    const state = await docker(["inspect", "--format", "{{.State.Status}} {{.State.ExitCode}}", name]);
+    if (/^[a-z]+ \d+$/.test(state)) console.error(`Fixture ${kind} ${index} container state: ${state}.`);
+    throw new Error("Fixture API readiness failed.");
+  }
   return endpoint;
 }
 
@@ -109,6 +117,9 @@ async function cleanup(): Promise<void> {
     await new Promise<void>((done) => tests!.once("close", () => done()));
   }
   let failed = false;
+  for (const relay of relays) {
+    try { await relay.close(); } catch { failed = true; }
+  }
   for (const name of [...containers].reverse()) {
     // A failed create may leave nothing to remove; only absence is safe to ignore.
     try {
@@ -128,12 +139,7 @@ async function cleanup(): Promise<void> {
 
 async function runSuite(kubo: string, cluster: string): Promise<void> {
   metadataDirectory = await mkdtemp(join(tmpdir(), `${prefix}-index-`));
-  const environment = { ...process.env };
-  for (const setting of [
-    "IPFS_API_AUTH", "IPFS_API_AUTH_FILE", "IPFS_API_AUTH_KEYVAULT_SECRET",
-    "IPFS_CLUSTER_AUTH", "IPFS_CLUSTER_AUTH_FILE", "IPFS_CLUSTER_AUTH_KEYVAULT_SECRET",
-    "AZURE_KEY_VAULT_URL", "AZURE_LOG_LEVEL",
-  ]) delete environment[setting];
+  const environment = isolatedIntegrationEnvironment(process.env);
   await new Promise<void>((done, reject) => {
     tests = spawn(process.execPath, [
       resolve("node_modules/vitest/vitest.mjs"), "run", "--config", "vitest.integration.config.ts",
@@ -189,6 +195,8 @@ async function main(): Promise<void> {
   process.once("SIGTERM", onSignal);
   try {
     await docker(["info", "--format", "{{.ServerVersion}}"], undefined, 15_000);
+    stage = "checking native Linux Docker host";
+    if (process.platform !== "linux") throw new Error("Fixture requires a native Linux Docker host.");
     stage = "pulling pinned official images";
     await docker(["pull", KUBO_IMAGE], undefined, 300_000);
     await docker(["pull", CLUSTER_IMAGE], undefined, 300_000);
