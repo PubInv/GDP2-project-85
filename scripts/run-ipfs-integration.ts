@@ -232,14 +232,27 @@ async function main(): Promise<void> {
     const bootstrap = `/dns4/cluster1/tcp/9096/p2p/${identity.id}`;
     await node("cluster", 2, bootstrap);
     await node("cluster", 3, bootstrap);
+    stage = "waiting for three healthy Cluster members";
+    let membershipSummary = "";
     await waitUntil(async () => {
       const text = await (await request(`${cluster}/peers`)).text();
-      const peers = text.trim().split("\n").map((line) => JSON.parse(line) as { id?: string; error?: string });
-      return peers.length === 3 && peers.every((peer) => peer.id && !peer.error);
+      const peers = text.trim().split("\n").map((line) =>
+        JSON.parse(line) as { id?: string; error?: string; ipfs?: { id?: string; error?: string } });
+      const healthy = peers.filter((peer) => peer.id && !peer.error && peer.ipfs?.id && !peer.ipfs.error).length;
+      const summary = `Cluster members observed: ${peers.length}; healthy Kubo connections: ${healthy}.`;
+      if (summary !== membershipSummary) console.log(summary);
+      membershipSummary = summary;
+      return peers.length === 3 && healthy === 3;
     });
+    stage = "waiting for three valid Cluster freespace metrics";
+    let metricSummary = "";
     await waitUntil(async () => {
       const metrics = await (await request(`${cluster}/monitor/metrics/freespace`)).json() as { valid?: boolean }[];
-      return metrics.length === 3 && metrics.every((metric) => metric.valid);
+      const valid = metrics.filter((metric) => metric.valid === true).length;
+      const summary = `Cluster freespace metrics observed: ${metrics.length}; valid: ${valid}.`;
+      if (summary !== metricSummary) console.log(summary);
+      metricSummary = summary;
+      return metrics.length === 3 && valid === 3;
     });
     stage = "running application integration tests";
     console.log("Three private Kubo/Cluster peers ready; running application integration tests.");
