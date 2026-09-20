@@ -129,8 +129,8 @@ sequenceDiagram
     Note over Store,Index: CAS first checks the current metadata version
     Store->>Wrapper: Put serialized envelope bytes
     Wrapper->>Primary: Put bytes
-    Note over Primary: Compute and verify raw CID; upload to Kubo; request Cluster pins
-    Note over Primary: Poll pin state and live peers; require at least two distinct Kubo copies
+    Note over Primary: Compute and verify raw CID, upload to Kubo, request Cluster pins
+    Note over Primary: Poll pin state and live peers, require at least two distinct Kubo copies
     Primary-->>Wrapper: Verified CID after replication threshold
     Wrapper->>S3: Conditional immutable create with SSE-KMS
     Note over Wrapper,S3: Existing backup is accepted only after byte and CID verification
@@ -168,7 +168,7 @@ sequenceDiagram
     Wrapper->>Primary: Republish bytes and repin
     Primary-->>Wrapper: Same CID after replica threshold
     Wrapper-->>Store: Verified restored CID
-    Store-->>Operator: Complete; metadata unchanged
+    Store-->>Operator: Complete, metadata unchanged
 ```
 
 Ordinary reads use the index and primary Kubo bytes with CID verification;
