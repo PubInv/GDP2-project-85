@@ -1,18 +1,20 @@
 import type { AddressInfo } from "node:net";
 import { resolve } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { InMemoryBlobStore } from "../src/index.js";
+import { ConcurrentUpdateError, InMemoryBlobStore } from "../src/index.js";
 import { createHealthRecordServer } from "../src/web/server.js";
 
 describe("local web server", () => {
   let server: ReturnType<typeof createHealthRecordServer>;
   let origin: string;
+  let store: InMemoryBlobStore;
 
   beforeEach(async () => {
+    store = new InMemoryBlobStore();
     server = createHealthRecordServer({
-      store: new InMemoryBlobStore(),
+      store,
       webRoot: resolve("web"),
     });
     await new Promise<void>((resolveListen) => {
@@ -23,6 +25,7 @@ describe("local web server", () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await new Promise<void>((resolveClose, reject) => {
       server.close((error) => {
         if (error) {
@@ -132,6 +135,35 @@ describe("local web server", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: "Cross-origin requests are not allowed.",
+    });
+  });
+
+  it("does not disclose provider diagnostics to logs or HTTP clients", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(store, "read").mockRejectedValue(new Error("SYNTHETIC-DIAGNOSTIC-MARKER"));
+    const clinician = await (await post("/api/clinicians", {})).json();
+    const response = await post("/api/enroll", {
+      clinician, biometricToken: "synthetic-provider-failure-0123456789abcdef",
+    });
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "Local POC request failed." });
+    expect(log).toHaveBeenCalledWith("Local POC request failed; diagnostic details withheld.");
+    expect(JSON.stringify(log.mock.calls)).not.toContain("SYNTHETIC-DIAGNOSTIC-MARKER");
+  });
+
+  it("surfaces CAS conflicts without exposing opaque storage keys", async () => {
+    const clinician = await (await post("/api/clinicians", {})).json();
+    const access = { clinician, biometricToken: "synthetic-cas-conflict-0123456789abcdef" };
+    expect((await post("/api/enroll", access)).status).toBe(201);
+    vi.spyOn(store, "compareAndSwap")
+      .mockRejectedValue(new ConcurrentUpdateError("opaque-key-must-not-be-disclosed"));
+    const response = await post("/api/records", {
+      ...access,
+      resource: { resourceType: "Condition", id: "synthetic-conflict", code: { text: "Synthetic" } },
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "Record changed concurrently. Unlock and try again.",
     });
   });
 

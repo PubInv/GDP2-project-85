@@ -1,0 +1,36 @@
+[Unit]
+Description=Global Patient Record Project private Kubo (approved AMI only)
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/srv/ipfs
+ConditionPathIsMountPoint=/srv/ipfs
+ConditionPathExists=/srv/ipfs/kubo/config
+ConditionPathExists=/srv/ipfs/kubo/swarm.key
+
+[Service]
+Type=simple
+User=ipfs
+Group=ipfs
+Environment=IPFS_PATH=/srv/ipfs/kubo
+Environment=LIBP2P_FORCE_PNET=1
+ExecStartPre=/usr/bin/test -s /srv/ipfs/kubo/swarm.key
+ExecStart=/opt/global-patient-record/bin/ipfs daemon
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/ipfs/kubo
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LimitCORE=0
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

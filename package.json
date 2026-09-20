@@ -16,20 +16,33 @@
     "dev": "tsx watch src/web/server.ts",
     "example": "tsx examples/basic-flow.ts",
     "example:access-denied": "tsx examples/access-denied.ts",
+    "example:storage": "tsx examples/configured-storage.ts",
+    "storage:restore": "tsx examples/restore-content.ts",
     "start": "tsx src/web/server.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:azure": "tsx scripts/run-azurite-integration.ts",
+    "test:integration:ipfs": "tsx scripts/run-ipfs-integration.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^24.3.1",
     "@vitest/coverage-v8": "^3.2.4",
+    "azurite": "^3.37.0",
     "happy-dom": "^18.0.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1131.0",
+    "@aws-sdk/client-s3": "^3.1131.0",
+    "@aws-sdk/client-secrets-manager": "^3.1131.0",
+    "@azure/identity": "^4.13.3",
+    "@azure/keyvault-secrets": "^4.11.2",
+    "@azure/storage-blob": "^12.33.0",
+    "multiformats": "^14.0.5",
     "swagger-ui-dist": "5.32.15"
   }
 }

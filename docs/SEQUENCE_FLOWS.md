@@ -311,7 +311,7 @@ sequenceDiagram
   `src/service/patient-record-service.ts`
 - Cryptographic primitives: `src/crypto/primitives.ts`
 - Provenance types: `src/domain/provenance.ts`
-- Storage abstraction: `src/storage/blob-store.ts`
+- Storage abstraction: `src/storage/core/blob-store.ts`
 - Local API: `src/web/server.ts`
 - Browser biometric simulation and workflow: `web/app.js`
 - Security assumptions: `docs/THREAT_MODEL.md`

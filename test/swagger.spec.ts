@@ -103,6 +103,9 @@ describe("local Swagger workbench", () => {
     ]);
     expect(spec.components.schemas.AccessRequest.properties.biometricToken.minLength).toBe(16);
     expect(spec.paths["/api/clinicians"].post.requestBody).toBeUndefined();
+    expect(spec.paths["/api/records"].post.responses["409"].$ref)
+      .toBe("#/components/responses/Conflict");
+    expect(spec.components.responses.Conflict.description).toContain("concurrent update");
 
     function checkReferences(value: unknown): void {
       if (!value || typeof value !== "object") return;

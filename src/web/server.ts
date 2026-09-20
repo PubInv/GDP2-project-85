@@ -7,13 +7,16 @@ import { fileURLToPath } from "node:url";
 
 import {
   AccessDeniedError,
+  ConcurrentUpdateError,
   FileBlobStore,
   IntegrityError,
   InvalidFhirResourceError,
   PatientRecordService,
   RecordAlreadyExistsError,
   RecordNotFoundError,
+  StorageConfigurationError,
   createClinicianCredential,
+  createConfiguredBlobStore,
   type BlobStore,
   type ClinicianCredential,
   type FhirResource,
@@ -278,8 +281,11 @@ function sendError(response: ServerResponse, error: unknown): void {
     sendJson(response, 409, { error: error.message });
     return;
   }
-
-  console.error("Local POC request failed:", error);
+  if (error instanceof ConcurrentUpdateError) {
+    sendJson(response, 409, { error: "Record changed concurrently. Unlock and try again." });
+    return;
+  }
+  console.error("Local POC request failed; diagnostic details withheld.");
   sendJson(response, 500, { error: "Local POC request failed." });
 }
 
@@ -296,9 +302,17 @@ class RequestError extends Error {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number.parseInt(process.env.PORT ?? `${DEFAULT_PORT}`, 10);
   const host = process.env.HOST ?? DEFAULT_HOST;
-  const server = createHealthRecordServer();
-  server.listen(port, host, () => {
-    console.log(`Global Private Health Records POC: http://${host}:${port}`);
-    console.log("Synthetic data only. Press Ctrl+C to stop.");
-  });
+  try {
+    const store = await createConfiguredBlobStore();
+    const server = createHealthRecordServer({ store });
+    server.listen(port, host, () => {
+      console.log(`Global Patient Record Project POC: http://${host}:${port}`);
+      console.log("Synthetic data only. Press Ctrl+C to stop.");
+    });
+  } catch (error) {
+    console.error(error instanceof StorageConfigurationError
+      ? error.message
+      : "Storage startup failed. Check backend configuration, runtime identity, and connectivity.");
+    process.exitCode = 1;
+  }
 }

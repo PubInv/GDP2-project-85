@@ -4,7 +4,7 @@ import {
   ObjectNotFoundError,
   type BlobStore,
   type StoredObject,
-} from "./blob-store.js";
+} from "../../core/blob-store.js";
 
 export class InMemoryBlobStore implements BlobStore {
   readonly #objects = new Map<string, StoredObject>();

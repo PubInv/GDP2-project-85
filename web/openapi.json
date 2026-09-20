@@ -271,7 +271,7 @@
         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
       },
       "Conflict": {
-        "description": "Record already enrolled or stored history failed integrity verification, depending on the operation.",
+        "description": "Record already enrolled, a concurrent update conflicted, or stored history failed integrity verification, depending on the operation.",
         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
       },
       "TooLarge": {
@@ -279,7 +279,7 @@
         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
       },
       "ServerError": {
-        "description": "Local POC failure. This existing API also maps invalid PEM credentials, too-short factors and unmapped concurrent writes to 500. This spec does not change runtime validation/error behavior.",
+        "description": "Local POC failure. This existing API also maps invalid PEM credentials and too-short factors to 500. Concurrent update conflicts return 409. This spec does not change runtime validation/error behavior.",
         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
       }
     }

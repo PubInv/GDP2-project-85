@@ -1,0 +1,34 @@
+[Unit]
+Description=Global Patient Record Project private IPFS Cluster (approved AMI only)
+After=network-online.target kubo.service
+Requires=kubo.service
+RequiresMountsFor=/srv/ipfs
+ConditionPathIsMountPoint=/srv/ipfs
+ConditionPathExists=/srv/ipfs/cluster/service.json
+ConditionPathExists=/srv/ipfs/cluster/identity.json
+
+[Service]
+Type=simple
+User=ipfs
+Group=ipfs
+Environment=IPFS_CLUSTER_PATH=/srv/ipfs/cluster
+ExecStart=/opt/global-patient-record/bin/ipfs-cluster-service daemon
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/ipfs/cluster
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LimitCORE=0
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

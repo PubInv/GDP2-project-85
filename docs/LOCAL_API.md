@@ -46,6 +46,8 @@ validation, **not full FHIR profile validation**. Maximum resource size is
 256 KiB; maximum request body is 512 KiB. The spec also documents the existing
 generic `500` behavior for malformed credentials, too-short factors and
 unmapped service errors; adding docs does not change API error handling.
+Storage compare-and-swap conflicts return `409`; unlock and reconcile the
+record before retrying rather than blindly repeating an append.
 
 ## Data and browser boundaries
 
