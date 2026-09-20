@@ -9,6 +9,9 @@ verify bytes against the pointer CID before decoding. The storage adapter does
 not encrypt: callers must supply authenticated ciphertext, never plaintext FHIR,
 biometrics, tokens, or derived keys.
 
+See the [AWS and local topology diagrams](STORAGE_TOPOLOGY_DIAGRAMS.md) for
+deployment boundaries and the ordered write and explicit-restore flows.
+
 ## Atomicity and failure model
 
 The injected `BlobStore` index supplies atomic create and numeric-version CAS.

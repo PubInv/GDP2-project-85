@@ -6,6 +6,9 @@ certification. No AWS account, credentials, live deployment, or cloud validation
 was used to implement this sample. Review the draft before changing settings.
 Nothing here creates a GitHub deployment workflow or stores secrets in GitHub.
 
+See the [AWS topology and write/restore diagrams](STORAGE_TOPOLOGY_DIAGRAMS.md)
+for a visual guide separating the foundation from operator-supplied peers.
+
 ## What is implemented
 
 `infra/aws/storage-foundation.json` is a manually deployable CloudFormation
