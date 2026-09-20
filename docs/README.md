@@ -383,7 +383,6 @@ For an architectural review with the GOSQAS team, the most useful questions are:
 - [Sequence flows](SEQUENCE_FLOWS.md)
 - [Threat model](THREAT_MODEL.md)
 - [Biometric simulation](BIOMETRIC_SIMULATION.md)
-- [Global Patient Record UX analysis](GLOBAL_PATIENT_RECORD_UX_ANALYSIS.md)
 - [Provenance design notes](PROVENANCE_DESIGN_NOTES.md)
 - Original concept documents in this directory
 

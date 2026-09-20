@@ -102,8 +102,7 @@ in browser local storage. Both demo secrets are sent to the local server for
 record operations; decryption and verification are not browser-only.
 
 Refresh the page to see HTML, CSS, or JavaScript changes while `npm start` is
-running. The [UX analysis](docs/GLOBAL_PATIENT_RECORD_UX_ANALYSIS.md) documents
-the reference-inspired layout and the patient-specific privacy boundaries.
+running.
 
 ## Commands
 
@@ -205,8 +204,6 @@ model is designed specifically for patient-controlled health information:
 The [six-slide technical presentation](docs/presentation/technical-presentation.pptx)
 covers the current architecture, provenance concepts, use cases, and
 production-readiness work. Speaking notes are kept separately from the deck.
-The [UX analysis](docs/GLOBAL_PATIENT_RECORD_UX_ANALYSIS.md) explains the selected
-website improvements and the reference patterns behind them.
 
 ## License
 
