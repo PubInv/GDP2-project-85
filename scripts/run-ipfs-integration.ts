@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { IpfsClusterClient } from "../src/index.js";
 import {
   CLUSTER_IMAGE, KUBO_IMAGE, SECRET_INIT_SCRIPT, containerArguments, isolatedIntegrationEnvironment, secretInput,
 } from "../test/fixtures/ipfs/fixture.js";
@@ -86,6 +87,30 @@ async function waitForMembers(cluster: string, expected: number): Promise<void> 
     previous = summary;
     return peers.length === expected && healthy === expected;
   });
+}
+
+async function waitForMetrics(cluster: string, expected: number): Promise<void> {
+  stage = `waiting for ${expected} valid Cluster freespace metrics`;
+  let previous = "";
+  await waitUntil(async () => {
+    const metrics = await (await request(`${cluster}/monitor/metrics/freespace`)).json() as { valid?: boolean }[];
+    const valid = metrics.filter((metric) => metric.valid === true).length;
+    const summary = `Cluster freespace metrics observed: ${metrics.length}; valid: ${valid}.`;
+    if (summary !== previous) console.log(summary);
+    previous = summary;
+    return metrics.length === expected && valid === expected;
+  });
+}
+
+async function confirmBootstrapWrites(kubo: string, cluster: string, replicas: number): Promise<void> {
+  stage = `confirming consensus writes across ${replicas} bootstrap peers`;
+  // Membership can be visible before Raft and allocation are ready for another join.
+  const client = new IpfsClusterClient({
+    kuboUrl: kubo, clusterUrl: cluster, allowInsecureLocal: true,
+    minReplicas: replicas, maxReplicas: replicas, timeoutMs: 30_000,
+  });
+  await client.put(randomBytes(64));
+  console.log(`Consensus write and ${replicas} concrete bootstrap pin(s) confirmed.`);
 }
 
 async function node(kind: "kubo" | "cluster", index: number, bootstrap?: string): Promise<string> {
@@ -247,21 +272,16 @@ async function main(): Promise<void> {
     const identity = await (await request(`${cluster}/id`)).json() as { id: string };
     const bootstrap = `/dns4/cluster1/tcp/9096/p2p/${identity.id}`;
     await waitForMembers(cluster, 1);
+    await waitForMetrics(cluster, 1);
+    await confirmBootstrapWrites(kubo[0]!, cluster, 1);
     await node("cluster", 2, bootstrap);
     // An HTTP listener is ready before its Raft membership change has committed.
     await waitForMembers(cluster, 2);
+    await waitForMetrics(cluster, 2);
+    await confirmBootstrapWrites(kubo[0]!, cluster, 2);
     await node("cluster", 3, bootstrap);
     await waitForMembers(cluster, 3);
-    stage = "waiting for three valid Cluster freespace metrics";
-    let metricSummary = "";
-    await waitUntil(async () => {
-      const metrics = await (await request(`${cluster}/monitor/metrics/freespace`)).json() as { valid?: boolean }[];
-      const valid = metrics.filter((metric) => metric.valid === true).length;
-      const summary = `Cluster freespace metrics observed: ${metrics.length}; valid: ${valid}.`;
-      if (summary !== metricSummary) console.log(summary);
-      metricSummary = summary;
-      return metrics.length === 3 && valid === 3;
-    });
+    await waitForMetrics(cluster, 3);
     stage = "running application integration tests";
     console.log("Three private Kubo/Cluster peers ready; running application integration tests.");
     await runSuite(kubo[0]!, cluster);

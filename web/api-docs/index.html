@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Global Patient Record Project - Local API</title>
+    <link rel="stylesheet" href="/docs/swagger-ui.css">
+    <link rel="stylesheet" href="/docs/docs.css">
+    <script src="/docs/swagger-ui-bundle.js" defer></script>
+    <script src="/docs/swagger-initializer.js" defer></script>
+  </head>
+  <body>
+    <header class="local-api-notice">
+      <h1>Local API workbench</h1>
+      <p><strong>Synthetic data only.</strong> This research POC is not a production or clinical system.
+        Requests, generated demo private keys and decrypted responses are visible in this browser.
+        Never use real patient data, biometrics or real credentials.</p>
+      <p>Try it out calls this server and can write encrypted demo records to its configured store.
+        Generate a clinician, copy its complete JSON into the access examples, and use the same
+        synthetic factor for enrollment, append and timeline. Change the factor for each new record.</p>
+      <p>Nothing in this workbench saves credentials to browser storage. Reload when finished;
+        this is not a guarantee of secure memory erasure. Do not share screenshots or HAR exports.</p>
+      <nav><a href="/">Local demo</a> | <a href="/openapi.json">OpenAPI JSON</a></nav>
+    </header>
+    <div id="swagger-ui"></div>
+    <noscript>Enable JavaScript to use the local API workbench.</noscript>
+  </body>
+</html>

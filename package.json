@@ -5,6 +5,9 @@
   "type": "module",
   "description": "Encrypted, dual-unlock FHIR provenance proof of concept",
   "license": "GPL-3.0-only",
+  "scarfSettings": {
+    "enabled": false
+  },
   "engines": {
     "node": ">=22"
   },
@@ -39,6 +42,7 @@
     "@azure/identity": "^4.13.3",
     "@azure/keyvault-secrets": "^4.11.2",
     "@azure/storage-blob": "^12.33.0",
-    "multiformats": "^14.0.5"
+    "multiformats": "^14.0.5",
+    "swagger-ui-dist": "5.32.15"
   }
 }

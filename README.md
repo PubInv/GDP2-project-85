@@ -131,6 +131,15 @@ DynamoDB metadata, and SSE-KMS encrypted S3 backups.
 | `npm run test:integration` | Explicit opt-in external-provider contract and encrypted-flow tests |
 | `npm run storage:restore -- OBJECT_KEY` | Explicitly restore verified encrypted IPFS content from its configured backup |
 
+## Interactive local API
+
+After `npm start`, open **http://127.0.0.1:3000/docs** for Swagger UI.
+**Try it out** calls the running local API; no cloud account is needed.
+The specification is available at `/openapi.json` and checked in as
+`web/openapi.json`. See [the local API guide](docs/LOCAL_API.md) for the
+synthetic clinician -> enroll -> append -> timeline walkthrough.
+Never enter real patient data or real credentials.
+
 ## Minimal usage
 
 ```ts

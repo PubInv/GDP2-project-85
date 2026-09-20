@@ -71,8 +71,12 @@ The isolated file backend holds index pointers and CID-addressed synthetic
 backups. The suite includes explicit backup restoration with an unchanged
 metadata version. This is not an S3 or AWS integration result.
 
-Readiness requires each Raft member to finish joining before starting the next,
-then all three allocation metrics. After
+Before starting each additional peer, readiness requires membership, allocation
+metrics, and a successful consensus write with concrete pins on all existing
+peers. The bootstrap probes use only random synthetic bytes, with one copy
+allowed solely while the fixture has one peer; application tests still require
+at least two copies. Neither probe writes nor application writes are retried.
+After all three peers and allocation metrics are ready and
 the application suite succeeds, the runner adds a separate random opaque
 1024-byte synthetic ciphertext marker to Kubo 1, requests Cluster replication
 with minimum 2 / maximum 3, and waits for recursive pins on **all three**
