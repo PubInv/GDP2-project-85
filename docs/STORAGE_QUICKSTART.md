@@ -10,6 +10,10 @@ Provider implementations and setup are segregated under
 for the folder layout and registering a custom adapter without editing the
 record service or built-in factory.
 
+See the [storage topology diagrams](STORAGE_TOPOLOGY_DIAGRAMS.md) for the
+proposed AWS deployment, default local app and optional private-IPFS fixture.
+Azure deployment topology is **To be decided**.
+
 ## Without any cloud accounts
 
 ```sh

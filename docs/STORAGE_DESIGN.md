@@ -7,6 +7,10 @@ and private-IPFS experiments without changing dual unlock, FHIR validation,
 signatures, MACs, or provenance verification. It does not claim clinical,
 regulatory, or production readiness.
 
+The [storage topology diagrams](STORAGE_TOPOLOGY_DIAGRAMS.md) distinguish
+implemented composition from proposed AWS infrastructure and local test setups.
+Azure deployment topology is **To be decided**.
+
 ```text
 PatientRecordService -> BlobStore
                          |-- InMemoryBlobStore (test)
