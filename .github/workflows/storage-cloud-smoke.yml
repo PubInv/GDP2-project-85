@@ -1,0 +1,64 @@
+name: Reviewed cloud storage smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: Dedicated synthetic-data provider (never a patient store)
+        type: choice
+        required: true
+        options: [azure, s3, dynamodb, aws-hybrid]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ vars.STORAGE_RUNNER_LABEL || 'ubuntu-latest' }}
+    timeout-minutes: 15
+    environment: storage-integration
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      STORAGE_INTEGRATION: "true"
+      STORAGE_EMULATOR: "false"
+      STORAGE_BACKEND: ${{ inputs.backend == 'aws-hybrid' && 'ipfs' || inputs.backend }}
+      AZURE_STORAGE_ACCOUNT_URL: ${{ vars.AZURE_STORAGE_ACCOUNT_URL }}
+      AZURE_STORAGE_CONTAINER: ${{ vars.AZURE_STORAGE_CONTAINER }}
+      S3_BUCKET: ${{ vars.S3_BUCKET }}
+      STORAGE_PREFIX: synthetic-integration/
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      S3_KMS_KEY_ID: ${{ vars.S3_KMS_KEY_ID }}
+      DYNAMODB_TABLE: ${{ vars.DYNAMODB_TABLE }}
+      IPFS_PRIVATE_NETWORK: "true"
+      IPFS_METADATA_BACKEND: dynamodb
+      IPFS_BACKUP_BACKEND: s3
+      IPFS_API_URL: ${{ vars.IPFS_API_URL }}
+      IPFS_CLUSTER_API_URL: ${{ vars.IPFS_CLUSTER_API_URL }}
+      IPFS_API_AUTH_AWS_SECRET_ID: ${{ vars.IPFS_API_AUTH_AWS_SECRET_ID }}
+      IPFS_CLUSTER_AUTH_AWS_SECRET_ID: ${{ vars.IPFS_CLUSTER_AUTH_AWS_SECRET_ID }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - if: inputs.backend == 'azure'
+        uses: azure/login@8216e11d8cd9b42fe925c852af8e76311ff067ac # v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - if: inputs.backend != 'azure'
+        uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: synthetic-storage-integration
+          role-duration-seconds: 900
+      - run: npm run test:integration

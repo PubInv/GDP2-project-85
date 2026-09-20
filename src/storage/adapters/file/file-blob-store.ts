@@ -7,7 +7,7 @@ import {
   ObjectNotFoundError,
   type BlobStore,
   type StoredObject,
-} from "./blob-store.js";
+} from "../../core/blob-store.js";
 
 const SAFE_KEY = /^[A-Za-z0-9_-]{32,128}$/;
 const fileLocks = new Map<string, Promise<void>>();

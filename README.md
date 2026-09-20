@@ -106,9 +106,18 @@ running.
 
 ## Commands
 
+For Azure, AWS S3, private IPFS, account-free integration tests, and secret-free
+configuration, see the short [storage quickstart](docs/STORAGE_QUICKSTART.md).
+The [draft storage design](docs/STORAGE_DESIGN.md) describes concurrency,
+metadata exposure, and remaining distributed-coordination limits.
+Provider implementations are isolated in
+[`src/storage/adapters/`](src/storage/README.md). An optional
+[AWS hybrid foundation](docs/AWS_HYBRID_STORAGE.md) combines EC2/Kubo/EBS,
+DynamoDB metadata, and SSE-KMS encrypted S3 backups.
+
 | Command | Purpose |
 | --- | --- |
-| `npm test` | Run all unit and integration tests |
+| `npm test` | Run account-free tests; external-provider integration is opt-in |
 | `npm run test:coverage` | Run tests with coverage |
 | `npm run typecheck` | Type-check without emitting JavaScript |
 | `npm run build` | Compile TypeScript into `dist` |
@@ -116,6 +125,11 @@ running.
 | `npm run dev` | Run the local UI with server restart on source changes |
 | `npm run example` | Run the synthetic end-to-end example |
 | `npm run example:access-denied` | Demonstrate that one factor alone cannot unlock a record |
+| `npm run example:storage` | Run a synthetic flow against the configured backend |
+| `npm run test:integration:azure` | Run real-SDK tests against temporary loopback Azurite |
+| `npm run test:integration:ipfs` | Run the private IPFS Docker fixture (Docker engine required) |
+| `npm run test:integration` | Explicit opt-in external-provider contract and encrypted-flow tests |
+| `npm run storage:restore -- OBJECT_KEY` | Explicitly restore verified encrypted IPFS content from its configured backup |
 
 ## Minimal usage
 
@@ -159,7 +173,7 @@ src/
   crypto/       Encryption, key splitting, signatures, and canonical hashing
   domain/       FHIR and provenance types
   service/      Enrollment, append, unlock, and verified assembly
-  storage/      Storage contract plus memory and local-file implementations
+  storage/      Provider-neutral contract, adapters, and runtime configuration
   web/          Local HTTP API and static-file server
 web/            Browser UI for enrollment, append, and timeline verification
 examples/       Synthetic end-to-end flows
