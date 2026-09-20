@@ -1,0 +1,287 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Global Patient Record Project - Local POC API",
+    "version": "0.1.0",
+    "description": "Synthetic-only research API. Not clinically or production ready. Use the locally hosted Swagger UI at /docs. Generate a demo clinician first, copy its complete JSON (including both PEM strings) into each access request, then enroll, append, and assemble a timeline with the same synthetic factor. Change the factor for each new record. Request bodies and decrypted responses are visible in the browser; never use real patient data or real credentials. There is no bearer-token authentication: record access requires both factors in the request body. This document describes the existing POC, not full FHIR conformance."
+  },
+  "servers": [
+    { "url": "/", "description": "This local server, including its current port" }
+  ],
+  "tags": [
+    { "name": "Status", "description": "Local server readiness" },
+    { "name": "Demo credentials", "description": "Generate ephemeral synthetic-workflow credentials" },
+    { "name": "Records", "description": "Dual-unlock encrypted record operations" }
+  ],
+  "paths": {
+    "/api/status": {
+      "get": {
+        "operationId": "getLocalStatus",
+        "tags": ["Status"],
+        "summary": "Check the local server",
+        "responses": {
+          "200": {
+            "description": "Local POC status",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Status" } } }
+          },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/clinicians": {
+      "post": {
+        "operationId": "createDemoClinician",
+        "tags": ["Demo credentials"],
+        "summary": "Generate a fresh demo clinician credential",
+        "description": "No request body is required. Copy the entire JSON response into the clinician field of subsequent requests. Keep this same credential for that record. This returns a private key for the synthetic local demo, not a production credential-enrollment mechanism. Do not save the response in source control or share it.",
+        "responses": {
+          "201": {
+            "description": "Fresh demo RSA credential; response includes a private key",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ClinicianCredential" } } }
+          },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/enroll": {
+      "post": {
+        "operationId": "enrollRecord",
+        "tags": ["Records"],
+        "summary": "Enroll a new encrypted demo record",
+        "description": "Use a fresh synthetic factor and the complete clinician response. Reusing an enrolled factor returns 409. The store receives encrypted material, not the supplied private key or plaintext factor.",
+        "requestBody": { "$ref": "#/components/requestBodies/Access" },
+        "responses": {
+          "201": {
+            "description": "Record enrolled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["enrolled"],
+                  "properties": { "enrolled": { "type": "boolean", "enum": [true] } }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "413": { "$ref": "#/components/responses/TooLarge" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/records": {
+      "post": {
+        "operationId": "appendRecord",
+        "tags": ["Records"],
+        "summary": "Append an encrypted FHIR fragment and provenance event",
+        "description": "Enroll first. Supply the same factor and clinician. Supports only the listed resource types with POC JSON validation, not full FHIR profile validation. Resource JSON is limited to 262144 UTF-8 bytes; the entire request is limited to 524288 bytes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AppendRequest" },
+              "example": {
+                "biometricToken": "synthetic-swagger-factor-change-for-each-record-0001",
+                "clinician": {
+                  "credentialId": "COPY_FROM_CLINICIAN_RESPONSE",
+                  "publicKeyPem": "COPY_FROM_CLINICIAN_RESPONSE",
+                  "privateKeyPem": "COPY_FROM_CLINICIAN_RESPONSE"
+                },
+                "resource": {
+                  "resourceType": "Condition",
+                  "id": "synthetic-swagger-condition",
+                  "code": { "text": "SYNTHETIC SWAGGER EXAMPLE ONLY" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Opaque identifiers for the newly appended event and fragment",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppendResult" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "413": { "$ref": "#/components/responses/TooLarge" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/timeline": {
+      "post": {
+        "operationId": "assembleTimeline",
+        "tags": ["Records"],
+        "summary": "Unlock and verify a record's complete timeline",
+        "description": "Read-only record operation expressed as POST so factors never appear in URL parameters. Verifies parent links, signatures, authorization MACs and content hashes before returning decrypted synthetic resources. The plaintext response is visible in Swagger UI. An enrolled record with no entries returns an empty array.",
+        "requestBody": { "$ref": "#/components/requestBodies/Access" },
+        "responses": {
+          "200": {
+            "description": "Verified, ordered timeline",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Timeline" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "413": { "$ref": "#/components/responses/TooLarge" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "requestBodies": {
+      "Access": {
+        "required": true,
+        "description": "Use the complete clinician JSON from this local server and a synthetic factor of at least 16 characters. Replace every COPY_FROM_CLINICIAN_RESPONSE placeholder. Total body limit: 524288 bytes.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/AccessRequest" },
+            "example": {
+              "biometricToken": "synthetic-swagger-factor-change-for-each-record-0001",
+              "clinician": {
+                "credentialId": "COPY_FROM_CLINICIAN_RESPONSE",
+                "publicKeyPem": "COPY_FROM_CLINICIAN_RESPONSE",
+                "privateKeyPem": "COPY_FROM_CLINICIAN_RESPONSE"
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Status": {
+        "type": "object",
+        "required": ["status", "mode", "biometricMode"],
+        "properties": {
+          "status": { "type": "string", "enum": ["ok"] },
+          "mode": { "type": "string", "enum": ["local-poc"] },
+          "biometricMode": { "type": "string", "enum": ["synthetic-browser-token"] }
+        }
+      },
+      "ClinicianCredential": {
+        "type": "object",
+        "required": ["credentialId", "publicKeyPem", "privateKeyPem"],
+        "description": "Generated demo key pair and its derived identifier. Copy all three fields unchanged; placeholders are not usable keys.",
+        "properties": {
+          "credentialId": { "type": "string", "description": "Identifier bound to this public key" },
+          "publicKeyPem": { "type": "string", "description": "Full generated public PEM, preserving JSON newline escapes" },
+          "privateKeyPem": { "type": "string", "description": "Full generated demo private PEM. Sensitive even in a demo; do not persist or share." }
+        }
+      },
+      "AccessRequest": {
+        "type": "object",
+        "required": ["biometricToken", "clinician"],
+        "properties": {
+          "biometricToken": {
+            "type": "string",
+            "minLength": 16,
+            "description": "Synthetic demo factor, never a real biometric. Use the same value throughout a record's flow."
+          },
+          "clinician": { "$ref": "#/components/schemas/ClinicianCredential" }
+        }
+      },
+      "AppendRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/AccessRequest" },
+          {
+            "type": "object",
+            "required": ["resource"],
+            "properties": { "resource": { "$ref": "#/components/schemas/FhirResource" } }
+          }
+        ]
+      },
+      "FhirResource": {
+        "type": "object",
+        "description": "Synthetic JSON resource with a supported type. Other JSON fields are permitted. This is not a full FHIR schema. Maximum serialized size: 262144 UTF-8 bytes.",
+        "required": ["resourceType"],
+        "properties": {
+          "resourceType": { "$ref": "#/components/schemas/ResourceType" },
+          "id": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": true
+      },
+      "ResourceType": {
+        "type": "string",
+        "enum": ["AllergyIntolerance", "Condition", "Immunization", "MedicationStatement", "Observation"]
+      },
+      "AppendResult": {
+        "type": "object",
+        "required": ["eventId", "fragmentId"],
+        "properties": {
+          "eventId": { "type": "string" },
+          "fragmentId": { "type": "string" }
+        }
+      },
+      "ProvenanceEvent": {
+        "type": "object",
+        "required": ["schemaVersion", "eventId", "parents", "fragmentId", "resourceType", "contentHash", "recordedAt", "clinicianId"],
+        "properties": {
+          "schemaVersion": { "type": "integer", "enum": [1] },
+          "eventId": { "type": "string" },
+          "parents": { "type": "array", "items": { "type": "string" } },
+          "fragmentId": { "type": "string" },
+          "resourceType": { "$ref": "#/components/schemas/ResourceType" },
+          "contentHash": { "type": "string" },
+          "recordedAt": { "type": "string", "format": "date-time" },
+          "clinicianId": { "type": "string" }
+        }
+      },
+      "Timeline": {
+        "type": "object",
+        "required": ["entries"],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["event", "resource"],
+              "properties": {
+                "event": { "$ref": "#/components/schemas/ProvenanceEvent" },
+                "resource": { "$ref": "#/components/schemas/FhirResource" }
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": { "error": { "type": "string" } }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid JSON, missing access fields, or unsupported/malformed FHIR JSON.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Forbidden": {
+        "description": "Browser origin rejected, or the provided clinician/factor cannot unlock the record.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "NotFound": {
+        "description": "No record exists for the supplied factor.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Conflict": {
+        "description": "Record already enrolled or stored history failed integrity verification, depending on the operation.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "TooLarge": {
+        "description": "Request body exceeds 524288 bytes.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "ServerError": {
+        "description": "Local POC failure. This existing API also maps invalid PEM credentials, too-short factors and unmapped concurrent writes to 500. This spec does not change runtime validation/error behavior.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    }
+  }
+}

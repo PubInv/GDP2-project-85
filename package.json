@@ -5,6 +5,9 @@
   "type": "module",
   "description": "Encrypted, dual-unlock FHIR provenance proof of concept",
   "license": "GPL-3.0-only",
+  "scarfSettings": {
+    "enabled": false
+  },
   "engines": {
     "node": ">=22"
   },
@@ -25,5 +28,8 @@
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "swagger-ui-dist": "5.32.15"
   }
 }

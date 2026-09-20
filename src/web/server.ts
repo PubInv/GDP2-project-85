@@ -1,7 +1,8 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { extname, normalize, resolve, sep } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, extname, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -21,6 +22,17 @@ import {
 const MAX_REQUEST_BYTES = 512 * 1024;
 const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = "127.0.0.1";
+const SWAGGER_ROOT = dirname(createRequire(import.meta.url).resolve("swagger-ui-dist/package.json"));
+const SWAGGER_ASSETS = new Map([
+  ["/docs/swagger-ui.css", "/swagger-ui.css"],
+  ["/docs/swagger-ui-bundle.js", "/swagger-ui-bundle.js"],
+]);
+const DOC_ASSETS = new Map([
+  ["/docs", "/api-docs/index.html"],
+  ["/docs/", "/api-docs/index.html"],
+  ["/docs/swagger-initializer.js", "/api-docs/swagger-initializer.js"],
+  ["/docs/docs.css", "/api-docs/docs.css"],
+]);
 
 interface WebServerOptions {
   store?: BlobStore;
@@ -46,6 +58,23 @@ export function createHealthRecordServer(options: WebServerOptions = {}) {
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://localhost");
+      if (url.pathname === "/docs" || url.pathname.startsWith("/docs/")) {
+        if (request.method !== "GET" && request.method !== "HEAD") {
+          response.setHeader("Allow", "GET, HEAD");
+          sendJson(response, 405, { error: "Documentation is read-only." });
+          return;
+        }
+        const swaggerAsset = SWAGGER_ASSETS.get(url.pathname);
+        const docAsset = DOC_ASSETS.get(url.pathname);
+        if (swaggerAsset) {
+          await serveStaticFile(response, SWAGGER_ROOT, swaggerAsset);
+        } else if (docAsset) {
+          await serveStaticFile(response, webRoot, docAsset);
+        } else {
+          sendJson(response, 404, { error: "File not found." });
+        }
+        return;
+      }
       if (url.pathname.startsWith("/api/")) {
         await handleApiRequest(request, response, url.pathname, records);
         return;
@@ -188,14 +217,18 @@ async function serveStaticFile(
     "Content-Type": contentTypeFor(absolutePath),
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
+    // Swagger's components set inline styles; this exception never applies to the main UI.
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+      `default-src 'self'; script-src 'self'; style-src 'self'${requestPath === "/api-docs/index.html" ? " 'unsafe-inline'" : ""}; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
+    "Referrer-Policy": "no-referrer",
   });
   createReadStream(absolutePath).pipe(response);
 }
 
 function contentTypeFor(path: string): string {
   switch (extname(path)) {
+    case ".json":
+      return "application/json; charset=utf-8";
     case ".css":
       return "text/css; charset=utf-8";
     case ".js":

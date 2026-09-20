@@ -118,6 +118,15 @@ the reference-inspired layout and the patient-specific privacy boundaries.
 | `npm run example` | Run the synthetic end-to-end example |
 | `npm run example:access-denied` | Demonstrate that one factor alone cannot unlock a record |
 
+## Interactive local API
+
+After `npm start`, open **http://127.0.0.1:3000/docs** for Swagger UI.
+**Try it out** calls the running local API; no cloud account is needed.
+The specification is available at `/openapi.json` and checked in as
+`web/openapi.json`. See [the local API guide](docs/LOCAL_API.md) for the
+synthetic clinician -> enroll -> append -> timeline walkthrough.
+Never enter real patient data or real credentials.
+
 ## Minimal usage
 
 ```ts

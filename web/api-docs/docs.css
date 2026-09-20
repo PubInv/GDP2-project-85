@@ -1,0 +1,23 @@
+body {
+  margin: 0;
+  background: #fafafa;
+}
+
+.local-api-notice {
+  max-width: 1400px;
+  margin: 16px auto;
+  padding: 16px 24px;
+  border-left: 4px solid #956000;
+  background: #fff5d6;
+  color: #242424;
+  font: 16px/1.5 system-ui, sans-serif;
+}
+
+.local-api-notice h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.local-api-notice a {
+  color: #18467c;
+}
