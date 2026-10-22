@@ -1,0 +1,41 @@
+{
+  "resourceType": "Provenance",
+  "id": "synthetic-provenance-001",
+  "meta": {
+    "source": "urn:synthetic:system:clinic-a"
+  },
+  "target": [
+    {
+      "reference": "AllergyIntolerance/synthetic-allergy-001"
+    },
+    {
+      "reference": "Condition/synthetic-condition-001"
+    },
+    {
+      "reference": "Immunization/synthetic-immunization-001"
+    },
+    {
+      "reference": "MedicationStatement/synthetic-medication-statement-001"
+    },
+    {
+      "reference": "Observation/synthetic-observation-001"
+    }
+  ],
+  "recorded": "2026-10-21T14:05:00Z",
+  "activity": {
+    "text": "Synthetic record assertion"
+  },
+  "agent": [
+    {
+      "type": {
+        "text": "Author"
+      },
+      "who": {
+        "reference": "Practitioner/synthetic-clinician-a"
+      },
+      "onBehalfOf": {
+        "reference": "Organization/synthetic-clinic-a"
+      }
+    }
+  ]
+}
