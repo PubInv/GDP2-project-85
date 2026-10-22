@@ -36,7 +36,7 @@ The candidate code systems are SNOMED CT (`http://snomed.info/sct`), LOINC (`htt
 
 ## Provenance proposal
 
-FHIR clinical resources do not share one universal author/facility field. These fixtures use `meta.source` only for a fictional source system. For a future FHIR representation, a separate R4 `Provenance` resource could point to the clinical resource in `target`, use `recorded` for the provenance assertion time, identify the clinician in `agent.who`, and identify the facility in `agent.onBehalfOf`; source material could be represented with `entity` when appropriate. The POC currently supports no `Provenance` resource and does not implement this mapping.
+FHIR clinical resources do not share one universal author/facility field. These fixtures use `meta.source` only for a fictional source system. [`provenance-proposal.json`](../examples/fhir-r4-minimum/provenance-proposal.json) is a separate R4-shaped candidate: it targets the five resources, uses `recorded` for assertion time, identifies the clinician in `agent.who`, and the fictional facility in `agent.onBehalfOf`. It is not included in the supported fixture set and the POC rejects `resourceType: Provenance`. A future mapping could use `entity` for source material when appropriate.
 
 The prototype separately creates its own signed provenance event with `recordedAt`, `clinicianId`, resource type, content hash, and parent links. It does not currently store a FHIR facility/encounter source or a clinical author reference in that event. A future crosswalk must be reviewed before claiming equivalence between the prototype event and FHIR Provenance.
 
