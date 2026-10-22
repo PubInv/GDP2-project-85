@@ -1,0 +1,25 @@
+{
+  "resourceType": "MedicationStatement",
+  "id": "synthetic-medication-statement-001",
+  "meta": {
+    "source": "urn:synthetic:system:clinic-a"
+  },
+  "status": "active",
+  "medicationCodeableConcept": {
+    "coding": [
+      {
+        "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+        "code": "358793",
+        "display": "Mometasone Furoate 0.05 mg/actuation"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/synthetic-patient-001"
+  },
+  "effectiveDateTime": "2026-10-21",
+  "dateAsserted": "2026-10-21T14:00:00Z",
+  "informationSource": {
+    "reference": "Practitioner/synthetic-clinician-a"
+  }
+}
