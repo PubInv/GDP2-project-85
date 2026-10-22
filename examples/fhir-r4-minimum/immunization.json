@@ -1,0 +1,30 @@
+{
+  "resourceType": "Immunization",
+  "id": "synthetic-immunization-001",
+  "meta": {
+    "source": "urn:synthetic:system:clinic-a"
+  },
+  "status": "completed",
+  "vaccineCode": {
+    "coding": [
+      {
+        "system": "http://hl7.org/fhir/sid/cvx",
+        "code": "104",
+        "display": "Hep A-Hep B vaccine"
+      }
+    ],
+    "text": "Synthetic example vaccine"
+  },
+  "patient": {
+    "reference": "Patient/synthetic-patient-001"
+  },
+  "occurrenceDateTime": "2026-10-21",
+  "primarySource": true,
+  "performer": [
+    {
+      "actor": {
+        "reference": "Practitioner/synthetic-clinician-a"
+      }
+    }
+  ]
+}
