@@ -174,9 +174,14 @@ describe("guided local research demo", () => {
     expect(window.document.querySelector(".nav-records")?.textContent).toContain("View timeline");
     expect(window.document.querySelector(".demo-band #sample-flow")).not.toBeNull();
     expect(window.document.querySelector(".hero #sample-flow")).toBeNull();
-    click(window, ".hero [data-section-link='timeline']");
-    expect(window.location.hash).toBe("#timeline");
-    expect(window.document.querySelector("#timeline-state")?.textContent).toContain("Locked");
+    expect(window.document.querySelector(".hero h1")?.textContent).toContain("Your health record");
+    expect(window.document.querySelector(".access-preview")?.textContent).toContain("Your record is locked");
+    expect(window.document.querySelector(".access-preview")?.textContent).toContain("both access factors");
+    expect(window.document.querySelector(".hero-intro")?.textContent).toContain("do not authenticate");
+    click(window, ".hero [data-section-link='login']");
+    expect(window.location.hash).toBe("#login");
+    expect(window.document.querySelector("#login")?.classList.contains("active")).toBe(true);
+    expect(window.document.querySelector("#login .role-card")?.textContent).toContain("Are you logging in");
     expect(requests).toHaveLength(0);
     click(window, "nav [data-section-link='dashboard']");
     click(window, ".hero [data-section-link='enroll']");

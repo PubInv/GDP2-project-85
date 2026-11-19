@@ -47,7 +47,7 @@ describe("local web server", () => {
     );
     expect(html).toContain("Global Patient Record Project");
     expect(html).toContain("Create sample patient and records");
-    expect(html).toContain("A private record.");
+    expect(html).toContain("Your health record");
     expect(html).toContain('id="timeline-state"');
     expect(html).toContain("sent to the local server");
     expect(html).not.toMatch(/<(?:script|link|img|iframe)[^>]+(?:src|href)="https?:/);
