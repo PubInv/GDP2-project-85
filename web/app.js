@@ -502,6 +502,10 @@ function showSection(sectionId, { focus = true, updateHistory = true } = {}) {
     sectionId = "dashboard";
     history.replaceState(null, "", "#dashboard");
   }
+  document.body.classList.toggle(
+    "dashboard",
+    sectionId === "dashboard" || sectionId === "login" || sectionId === "patient-login" || sectionId === "clinician-login",
+  );
   const previousSection = document.querySelector(".page.active");
   if (previousSection?.id !== sectionId) {
     clearTimeline();
