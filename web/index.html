@@ -44,41 +44,52 @@
 
       <section id="dashboard" class="page active">
         <div class="hero">
-          <div>
-            <p class="eyebrow">Global Patient Record Project</p>
-            <h1>A private record.<br>A history you can verify.</h1>
+          <div class="hero-intro">
+            <div class="hero-brand">
+              <span class="brand-mark" aria-hidden="true">+</span>
+              <strong>Global Patient<br>Record Project</strong>
+            </div>
+            <p class="demo-pill">Research demo · Synthetic data only</p>
+            <h1>Your health record,<br>in one place.</h1>
             <p class="hero-copy">
-              Explore how a patient factor and an authorized clinician key can
-              work together to unlock an encrypted health-record history.
-              Neither works alone.
+              Keep a private, verifiable history. Your record stays locked until
+              a patient factor and an authorized clinician credential are used
+              together.
             </p>
+            <p class="welcome-copy">Welcome Synthetic Patient -</p>
             <div class="button-row">
-              <button class="primary" type="button" data-section-link="timeline">
-                View timeline
+              <button class="primary" type="button" data-section-link="login">
+                Open my record <span aria-hidden="true">→</span>
               </button>
               <button class="secondary" type="button" data-section-link="enroll">
-                Create a record
+                I’m a clinician / helping someone
               </button>
             </div>
             <p class="detail">
-              Already enrolled? Open your timeline. Starting fresh? Create a
-              synthetic record, or try the guided sample below.
+              These buttons only open a demo workflow. They do not authenticate
+              a patient or clinician.
             </p>
           </div>
-          <aside class="access-preview" aria-label="Two factors, one private history">
-            <p class="eyebrow">Both factors required</p>
+          <aside class="access-preview" aria-label="Record access requirements">
+            <div class="lock-illustration" aria-hidden="true">
+              <svg viewBox="0 0 64 64" focusable="false">
+                <path d="M18 27v-7a14 14 0 0 1 28 0v7" />
+                <rect x="12" y="27" width="40" height="29" rx="5" />
+                <circle cx="32" cy="40" r="3" />
+                <path d="M32 43v6" />
+              </svg>
+            </div>
+            <h2>Your record is locked</h2>
+            <p class="access-copy">Your history stays hidden until both access factors are provided.</p>
             <div class="factor-pair">
-              <span>Patient factor<small>Synthetic browser token</small></span>
+              <span>Patient factor<small>Synthetic demo token</small></span>
               <span class="pair-plus" aria-hidden="true">+</span>
-              <span>Clinician key<small>Authorized credential</small></span>
+              <span>Clinician credential<small>Authorized private key</small></span>
             </div>
-            <div class="preview-record">
-              <span class="preview-line" aria-hidden="true"></span>
-              <span class="preview-line short" aria-hidden="true"></span>
-              <strong>Encrypted record history</strong>
-              <small>Unlock together. Verify before display.</small>
-            </div>
-            <p class="detail">An illustration of the demo, not a live access status.</p>
+            <button class="primary access-action" type="button" data-section-link="login">
+              Open my record <span aria-hidden="true">→</span>
+            </button>
+            <p class="access-footnote">Both factors are required · No public record links</p>
           </aside>
         </div>
 
@@ -176,6 +187,45 @@
             informed consent. Real biometric matching is not implemented.
           </p>
           <button class="outline" type="button" data-section-link="about">How it works</button>
+        </div>
+      </section>
+
+      <section id="login" class="page login-page">
+        <div class="role-card" role="group" aria-label="Account type">
+          <p>Are you logging in to your account?</p>
+          <div class="role-options">
+            <button type="button" data-section-link="patient-login">Yes</button>
+            <button type="button" data-section-link="clinician-login">Clinician / helping someone</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="patient-login" class="page login-page">
+        <div class="login-lockup">
+          <h1>Your record is locked</h1>
+          <p>Select a synthetic patient factor, then continue to the record timeline.</p>
+          <button class="primary" type="button" data-section-link="timeline">
+            Open my record <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="clinician-login" class="page login-page">
+        <div class="credential-card">
+          <div class="credential-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48" focusable="false">
+              <circle cx="29" cy="19" r="7" />
+              <path d="m24 24-13 13v5h5v-5h5v-5h5" />
+            </svg>
+          </div>
+          <div>
+            <h1>1. Clinician credential</h1>
+            <p id="login-clinician-status">Not connected</p>
+            <small>Connect your authorized clinician credential.</small>
+          </div>
+          <button class="outline" type="button" data-section-link="enroll">
+            Connect clinician credential
+          </button>
         </div>
       </section>
 
